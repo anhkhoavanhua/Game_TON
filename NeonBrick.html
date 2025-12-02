@@ -1,0 +1,2431 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Brick Breaker - TON Edition</title>
+    <!-- Tone.js cho âm thanh -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- TON Connect UI -->
+    <script src="https://unpkg.com/@tonconnect/ui@2.0.0/dist/tonconnect-ui.min.js"></script>
+    <!-- Font Awesome cho icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;700;900&display=swap');
+
+        :root {
+            --primary: #00ffc4;
+            --secondary: #ff00e6;
+            --tertiary: #00d4ff;
+            --bg-dark: #0a0e14;
+            --bg-card: #141922;
+            --bg-card-hover: #1a2130;
+            --text-light: #ffffff;
+            --text-muted: #6b7280;
+            --accent-gold: #ffd700;
+            --danger: #ff4757;
+            --success: #2ed573;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+            margin: 0;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #0d1520 100%);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-light);
+            overflow: hidden;
+        }
+
+        /* === HEADER === */
+        .header {
+            padding: 12px 16px;
+            background: linear-gradient(180deg, rgba(20,25,34,0.98) 0%, rgba(10,14,20,0.9) 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            border-bottom: 1px solid rgba(0,255,196,0.1);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 0 15px rgba(0,255,196,0.3);
+            position: relative;
+        }
+
+        .avatar::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            z-index: -1;
+            opacity: 0.5;
+            animation: pulse-ring 2s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.2; }
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .user-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .level-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(90deg, rgba(0,255,196,0.15), rgba(255,0,230,0.15));
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            color: var(--primary);
+            border: 1px solid rgba(0,255,196,0.3);
+            font-weight: 600;
+        }
+
+        .balance-container {
+            text-align: right;
+        }
+
+        .coin-balance {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.4rem;
+            font-weight: 900;
+            background: linear-gradient(90deg, var(--accent-gold), #ffaa00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+
+        .coin-balance i {
+            -webkit-text-fill-color: var(--accent-gold);
+            filter: drop-shadow(0 0 8px rgba(255,215,0,0.5));
+        }
+
+        .balance-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* === STATS BAR === */
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 16px;
+            background: rgba(20,25,34,0.8);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .stat-item i {
+            color: var(--primary);
+        }
+
+        .stat-item.lives i { color: var(--danger); }
+        .stat-item.combo i { color: var(--accent-gold); }
+        .stat-item.score i { color: var(--tertiary); }
+
+        /* === MAIN CONTENT === */
+        .main-content {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(180deg, #010409 0%, #0a0e14 100%);
+            border: 2px solid transparent;
+            border-image: linear-gradient(135deg, var(--primary), var(--secondary)) 1;
+            border-radius: 16px;
+            box-shadow:
+                0 0 30px rgba(0, 255, 196, 0.15),
+                inset 0 0 60px rgba(0,0,0,0.5);
+            max-width: 95%;
+            max-height: 70vh;
+            touch-action: none;
+        }
+
+        /* === SCREENS === */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-dark);
+            display: none;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 20;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        .screen-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.8rem;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* === CARDS === */
+        .card {
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(20,25,34,0.8) 100%);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover, .card:active {
+            background: var(--bg-card-hover);
+            border-color: rgba(0,255,196,0.2);
+            transform: translateY(-2px);
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(0,255,196,0.2), rgba(255,0,230,0.2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .card-info {
+            flex: 1;
+        }
+
+        .card-info h4 {
+            margin: 0 0 4px 0;
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .card-info p {
+            margin: 0;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .card-info .reward {
+            color: var(--accent-gold);
+            font-weight: 600;
+        }
+
+        .btn-action {
+            background: linear-gradient(90deg, var(--secondary), #cc00b8);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255,0,230,0.3);
+            white-space: nowrap;
+        }
+
+        .btn-action:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(255,0,230,0.4);
+        }
+
+        .btn-action:disabled {
+            background: #30363d;
+            cursor: not-allowed;
+            opacity: 0.5;
+            box-shadow: none;
+        }
+
+        .btn-action.claimed {
+            background: var(--success);
+            box-shadow: 0 4px 15px rgba(46,213,115,0.3);
+        }
+
+        .btn-action.connect-wallet {
+            background: linear-gradient(90deg, #0098EA, #00B4D8);
+            box-shadow: 0 4px 15px rgba(0,152,234,0.3);
+        }
+
+        /* === DAILY REWARD === */
+        .daily-reward-banner {
+            background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,170,0,0.1));
+            border: 1px solid rgba(255,215,0,0.3);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .daily-reward-banner h3 {
+            color: var(--accent-gold);
+            margin: 0 0 8px 0;
+            font-size: 1.1rem;
+        }
+
+        .streak-days {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .streak-day {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 2px solid transparent;
+        }
+
+        .streak-day.claimed {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .streak-day.today {
+            border-color: var(--accent-gold);
+            animation: glow-gold 1.5s infinite;
+        }
+
+        @keyframes glow-gold {
+            0%, 100% { box-shadow: 0 0 5px rgba(255,215,0,0.5); }
+            50% { box-shadow: 0 0 20px rgba(255,215,0,0.8); }
+        }
+
+        /* === WALLET SECTION === */
+        .wallet-section {
+            background: linear-gradient(135deg, rgba(0,152,234,0.15), rgba(0,180,216,0.1));
+            border: 1px solid rgba(0,152,234,0.3);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .wallet-connected {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .wallet-address {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.85rem;
+            color: var(--tertiary);
+            background: rgba(0,0,0,0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+        }
+
+        /* === LEADERBOARD === */
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+
+        .leaderboard-rank {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .leaderboard-rank.gold { background: linear-gradient(135deg, #FFD700, #FFA500); color: #000; }
+        .leaderboard-rank.silver { background: linear-gradient(135deg, #C0C0C0, #A0A0A0); color: #000; }
+        .leaderboard-rank.bronze { background: linear-gradient(135deg, #CD7F32, #A0522D); color: #fff; }
+
+        .leaderboard-info {
+            flex: 1;
+        }
+
+        .leaderboard-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .leaderboard-score {
+            font-family: 'Orbitron', monospace;
+            color: var(--accent-gold);
+            font-weight: 700;
+        }
+
+        /* === BOTTOM NAV === */
+        .bottom-nav {
+            height: 70px;
+            background: linear-gradient(180deg, var(--bg-card) 0%, rgba(15,20,28,0.98) 100%);
+            border-top: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: env(safe-area-inset-bottom, 10px);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 8px 16px;
+            border-radius: 12px;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+            background: rgba(0,255,196,0.1);
+        }
+
+        .nav-item i {
+            font-size: 1.4rem;
+            margin-bottom: 4px;
+        }
+
+        .nav-item .nav-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 18px;
+            height: 18px;
+            background: var(--danger);
+            border-radius: 50%;
+            font-size: 0.65rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        /* === OVERLAYS === */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.92);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .hidden { display: none !important; }
+
+        .overlay-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            font-weight: 900;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 40px rgba(0,255,196,0.5);
+        }
+
+        .overlay-sub {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .overlay-stats {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .overlay-stat {
+            text-align: center;
+        }
+
+        .overlay-stat-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+        }
+
+        .overlay-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .big-btn {
+            background: linear-gradient(90deg, var(--primary), #00d4a0);
+            border: none;
+            padding: 16px 48px;
+            border-radius: 30px;
+            color: #000;
+            font-weight: 900;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 0 30px rgba(0, 255, 196, 0.4);
+            animation: pulse 2s infinite;
+            transition: all 0.3s ease;
+        }
+
+        .big-btn:hover {
+            transform: scale(1.05);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 255, 196, 0.7); }
+            70% { transform: scale(1.02); box-shadow: 0 0 0 15px rgba(0, 255, 196, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 255, 196, 0); }
+        }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid var(--secondary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* === POWER-UP INDICATORS === */
+        .powerup-bar {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 8px;
+            min-height: 40px;
+        }
+
+        .powerup-active {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0,255,196,0.2);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            animation: powerup-glow 1s infinite;
+        }
+
+        @keyframes powerup-glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(0,255,196,0.5); }
+            50% { box-shadow: 0 0 15px rgba(0,255,196,0.8); }
+        }
+
+        /* === TOAST NOTIFICATIONS === */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: toast-in 0.3s ease, toast-out 0.3s ease 2.7s forwards;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .toast.success { border-color: var(--success); }
+        .toast.warning { border-color: var(--accent-gold); }
+        .toast.error { border-color: var(--danger); }
+
+        .toast i {
+            font-size: 1.2rem;
+        }
+
+        .toast.success i { color: var(--success); }
+        .toast.warning i { color: var(--accent-gold); }
+        .toast.error i { color: var(--danger); }
+
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes toast-out {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+        }
+
+        /* === ACHIEVEMENTS TAB === */
+        .achievement-card {
+            opacity: 0.5;
+            filter: grayscale(1);
+        }
+
+        .achievement-card.unlocked {
+            opacity: 1;
+            filter: none;
+        }
+
+        .achievement-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--success);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+        }
+
+        /* === SECTION TABS === */
+        .section-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .section-tab {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+
+        .section-tab.active {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: #000;
+            border-color: transparent;
+        }
+
+        /* === SCROLLBAR === */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="user-info">
+            <div class="avatar" id="userAvatar">U</div>
+            <div class="user-details">
+                <div class="user-name" id="userName">Player</div>
+                <div class="level-badge">
+                    <i class="fas fa-star"></i>
+                    <span id="levelDisplay">Level 1</span>
+                </div>
+            </div>
+        </div>
+        <div class="balance-container">
+            <div class="coin-balance">
+                <i class="fas fa-coins"></i>
+                <span id="coinDisplay">0</span>
+            </div>
+            <div class="balance-label">Neon Coins</div>
+        </div>
+    </div>
+
+    <!-- Stats Bar (visible during game) -->
+    <div class="stats-bar" id="statsBar">
+        <div class="stat-item lives">
+            <i class="fas fa-heart"></i>
+            <span id="livesDisplay">3</span>
+        </div>
+        <div class="stat-item combo">
+            <i class="fas fa-fire"></i>
+            <span>Combo: </span><span id="comboDisplay">x1</span>
+        </div>
+        <div class="stat-item score">
+            <i class="fas fa-gem"></i>
+            <span>Score: </span><span id="scoreDisplay">0</span>
+        </div>
+    </div>
+
+    <!-- Power-up Bar -->
+    <div class="powerup-bar" id="powerupBar"></div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <!-- Game View -->
+        <canvas id="gameCanvas" width="360" height="500"></canvas>
+
+        <!-- Overlay: Start / Game Over / Next Level -->
+        <div id="gameOverlay" class="overlay">
+            <h1 id="overlayTitle" class="overlay-title">NEON<br>BREAKER</h1>
+            <p id="overlaySub" class="overlay-sub">Phá gạch - Kiếm Token - Lên TOP</p>
+
+            <div id="overlayStats" class="overlay-stats hidden">
+                <div class="overlay-stat">
+                    <div class="overlay-stat-value" id="statCoins">0</div>
+                    <div class="overlay-stat-label">Coins Earned</div>
+                </div>
+                <div class="overlay-stat">
+                    <div class="overlay-stat-value" id="statCombo">0</div>
+                    <div class="overlay-stat-label">Max Combo</div>
+                </div>
+            </div>
+
+            <div id="aiLoading" class="loading-container hidden">
+                <div class="loading-spinner"></div>
+                <p style="color: var(--text-muted);">AI đang thiết kế màn chơi...</p>
+            </div>
+
+            <button id="mainBtn" class="big-btn">PLAY</button>
+        </div>
+
+        <!-- Shop Screen -->
+        <div id="shopScreen" class="screen">
+            <div class="screen-title">Marketplace</div>
+
+            <div class="section-tabs">
+                <div class="section-tab active" onclick="switchShopTab('upgrades')">Upgrades</div>
+                <div class="section-tab" onclick="switchShopTab('powerups')">Power-ups</div>
+                <div class="section-tab" onclick="switchShopTab('skins')">Skins</div>
+            </div>
+
+            <div id="shopUpgrades">
+                <div class="card">
+                    <div class="card-icon"><i class="fas fa-heart"></i></div>
+                    <div class="card-info">
+                        <h4>Extra Life</h4>
+                        <p>+1 Mạng vĩnh viễn. Hiện tại: <span id="shopLives">3</span> mạng</p>
+                    </div>
+                    <button class="btn-action" onclick="buyUpgrade('life', 500)">500 <i class="fas fa-coins"></i></button>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon"><i class="fas fa-arrows-alt-h"></i></div>
+                    <div class="card-info">
+                        <h4>Long Paddle</h4>
+                        <p>Thanh chắn rộng hơn 15%. Level: <span id="shopPaddle">0</span>/5</p>
+                    </div>
+                    <button class="btn-action" id="btnPaddle" onclick="buyUpgrade('paddle', 1000)">1K <i class="fas fa-coins"></i></button>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon"><i class="fas fa-tachometer-alt"></i></div>
+                    <div class="card-info">
+                        <h4>Ball Speed Control</h4>
+                        <p>Bóng chậm hơn 10%. Level: <span id="shopSpeed">0</span>/3</p>
+                    </div>
+                    <button class="btn-action" id="btnSpeed" onclick="buyUpgrade('speed', 1500)">1.5K <i class="fas fa-coins"></i></button>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon"><i class="fas fa-coins"></i></div>
+                    <div class="card-info">
+                        <h4>Coin Multiplier</h4>
+                        <p>+25% coins mỗi gạch. Level: <span id="shopMulti">0</span>/4</p>
+                    </div>
+                    <button class="btn-action" id="btnMulti" onclick="buyUpgrade('multi', 2000)">2K <i class="fas fa-coins"></i></button>
+                </div>
+            </div>
+
+            <div id="shopPowerups" class="hidden">
+                <div class="card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, rgba(255,0,0,0.3), rgba(255,100,0,0.2));">
+                        <i class="fas fa-bomb" style="color: #ff4757;"></i>
+                    </div>
+                    <div class="card-info">
+                        <h4>Mega Bomb</h4>
+                        <p>Phá hủy 3x3 gạch xung quanh. Có: <span id="bombCount">0</span></p>
+                    </div>
+                    <button class="btn-action" onclick="buyPowerup('bomb', 300)">300 <i class="fas fa-coins"></i></button>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, rgba(0,255,255,0.3), rgba(0,200,255,0.2));">
+                        <i class="fas fa-shield-alt" style="color: #00d4ff;"></i>
+                    </div>
+                    <div class="card-info">
+                        <h4>Shield</h4>
+                        <p>Bảo vệ 1 lần mất bóng. Có: <span id="shieldCount">0</span></p>
+                    </div>
+                    <button class="btn-action" onclick="buyPowerup('shield', 400)">400 <i class="fas fa-coins"></i></button>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, rgba(255,215,0,0.3), rgba(255,170,0,0.2));">
+                        <i class="fas fa-bolt" style="color: #ffd700;"></i>
+                    </div>
+                    <div class="card-info">
+                        <h4>Double Points</h4>
+                        <p>x2 điểm trong 30 giây. Có: <span id="doubleCount">0</span></p>
+                    </div>
+                    <button class="btn-action" onclick="buyPowerup('double', 500)">500 <i class="fas fa-coins"></i></button>
+                </div>
+            </div>
+
+            <div id="shopSkins" class="hidden">
+                <div class="card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #ff00e6, #00ffc4);">
+                        <i class="fas fa-circle"></i>
+                    </div>
+                    <div class="card-info">
+                        <h4>Neon Classic</h4>
+                        <p>Skin mặc định</p>
+                    </div>
+                    <button class="btn-action claimed">Equipped</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #ffd700, #ff6b00);">
+                        <i class="fas fa-sun"></i>
+                    </div>
+                    <div class="card-info">
+                        <h4>Solar Flare</h4>
+                        <p>Bóng lửa mặt trời</p>
+                    </div>
+                    <button class="btn-action" onclick="buySkin('solar', 5000)">5K <i class="fas fa-coins"></i></button>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon" style="background: linear-gradient(135deg, #00d4ff, #0066ff);">
+                        <i class="fas fa-snowflake"></i>
+                    </div>
+                    <div class="card-info">
+                        <h4>Ice Crystal</h4>
+                        <p>Bóng băng giá</p>
+                    </div>
+                    <button class="btn-action" onclick="buySkin('ice', 5000)">5K <i class="fas fa-coins"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Earn/Tasks Screen -->
+        <div id="earnScreen" class="screen">
+            <div class="screen-title">Earn Coins</div>
+
+            <!-- Daily Reward -->
+            <div class="daily-reward-banner">
+                <h3><i class="fas fa-calendar-check"></i> Daily Login Bonus</h3>
+                <p id="dailyRewardText">Đăng nhập mỗi ngày để nhận thưởng!</p>
+                <div class="streak-days" id="streakDays"></div>
+                <button class="btn-action" id="claimDailyBtn" onclick="claimDailyReward()" style="margin-top: 12px;">
+                    Claim <span id="dailyAmount">100</span> <i class="fas fa-coins"></i>
+                </button>
+            </div>
+
+            <!-- Wallet Connection -->
+            <div class="wallet-section">
+                <div id="walletNotConnected">
+                    <h4 style="margin: 0 0 8px 0;"><i class="fab fa-telegram"></i> TON Wallet</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+                        Kết nối ví để nhận token thật!
+                    </p>
+                    <button class="btn-action connect-wallet" id="connectWalletBtn" onclick="connectTonWallet()">
+                        <i class="fas fa-wallet"></i> Connect Wallet
+                    </button>
+                </div>
+                <div id="walletConnected" class="hidden">
+                    <div class="wallet-connected">
+                        <i class="fas fa-check-circle" style="color: var(--success); font-size: 1.5rem;"></i>
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">Connected</div>
+                            <div class="wallet-address" id="walletAddress">UQ...abc</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tasks -->
+            <h4 style="margin: 20px 0 12px 0; font-size: 1rem;">
+                <i class="fas fa-tasks"></i> Daily Tasks
+            </h4>
+
+            <div class="card" id="taskChannel">
+                <div class="card-icon"><i class="fab fa-telegram"></i></div>
+                <div class="card-info">
+                    <h4>Join Official Channel</h4>
+                    <p>Tham gia channel nhận <span class="reward">+500 Coins</span></p>
+                </div>
+                <button class="btn-action" id="btnJoinChannel" onclick="doTask('channel', 500)">Join</button>
+            </div>
+
+            <div class="card" id="taskTwitter">
+                <div class="card-icon"><i class="fab fa-twitter"></i></div>
+                <div class="card-info">
+                    <h4>Follow Twitter</h4>
+                    <p>Follow nhận <span class="reward">+300 Coins</span></p>
+                </div>
+                <button class="btn-action" id="btnTwitter" onclick="doTask('twitter', 300)">Follow</button>
+            </div>
+
+            <div class="card">
+                <div class="card-icon"><i class="fas fa-user-plus"></i></div>
+                <div class="card-info">
+                    <h4>Invite Friends</h4>
+                    <p>Mời bạn bè nhận <span class="reward">+1000 Coins/bạn</span></p>
+                </div>
+                <button class="btn-action" onclick="inviteFriends()">Invite</button>
+            </div>
+
+            <div class="card">
+                <div class="card-icon"><i class="fas fa-gamepad"></i></div>
+                <div class="card-info">
+                    <h4>Play 5 Games Today</h4>
+                    <p>Chơi 5 ván: <span id="gamesPlayed">0</span>/5 - <span class="reward">+200 Coins</span></p>
+                </div>
+                <button class="btn-action" id="btnPlay5" onclick="claimPlay5()" disabled>0/5</button>
+            </div>
+        </div>
+
+        <!-- Leaderboard Screen -->
+        <div id="leaderboardScreen" class="screen">
+            <div class="screen-title">Leaderboard</div>
+
+            <div class="section-tabs">
+                <div class="section-tab active" onclick="switchLeaderboardTab('weekly')">Weekly</div>
+                <div class="section-tab" onclick="switchLeaderboardTab('alltime')">All Time</div>
+                <div class="section-tab" onclick="switchLeaderboardTab('friends')">Friends</div>
+            </div>
+
+            <div id="leaderboardList"></div>
+
+            <div class="card" style="margin-top: 20px; border-color: var(--primary);">
+                <div class="card-icon"><i class="fas fa-user"></i></div>
+                <div class="card-info">
+                    <h4>Your Rank</h4>
+                    <p>Top <span id="yourRank">--</span> | Score: <span id="yourHighScore">0</span></p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('game')" data-tab="game">
+            <i class="fas fa-gamepad"></i>
+            <span>Play</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('shop')" data-tab="shop">
+            <i class="fas fa-store"></i>
+            <span>Shop</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('earn')" data-tab="earn" style="position: relative;">
+            <i class="fas fa-gift"></i>
+            <span>Earn</span>
+            <div class="nav-badge hidden" id="earnBadge">!</div>
+        </div>
+        <div class="nav-item" onclick="switchTab('leaderboard')" data-tab="leaderboard">
+            <i class="fas fa-trophy"></i>
+            <span>Rank</span>
+        </div>
+    </div>
+
+    <script>
+        // === TELEGRAM WEB APP INIT ===
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            tg.enableClosingConfirmation();
+        }
+
+        // === AUDIO ENGINE ===
+        let audioContext = null;
+        let audioInitialized = false;
+
+        function initAudio() {
+            if (audioInitialized) return;
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioInitialized = true;
+            } catch (e) {
+                console.warn('Audio not supported');
+            }
+        }
+
+        function playSound(type) {
+            if (!audioInitialized || !audioContext) return;
+
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                const now = audioContext.currentTime;
+
+                switch(type) {
+                    case 'hit':
+                        oscillator.frequency.setValueAtTime(523.25, now); // C5
+                        gainNode.gain.setValueAtTime(0.3, now);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                        oscillator.start(now);
+                        oscillator.stop(now + 0.1);
+                        break;
+                    case 'brick':
+                        oscillator.frequency.setValueAtTime(783.99, now); // G5
+                        gainNode.gain.setValueAtTime(0.2, now);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                        oscillator.start(now);
+                        oscillator.stop(now + 0.15);
+                        break;
+                    case 'coin':
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(987.77, now); // B5
+                        oscillator.frequency.setValueAtTime(1318.51, now + 0.1); // E6
+                        gainNode.gain.setValueAtTime(0.25, now);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                        oscillator.start(now);
+                        oscillator.stop(now + 0.2);
+                        break;
+                    case 'powerup':
+                        oscillator.type = 'triangle';
+                        oscillator.frequency.setValueAtTime(523.25, now);
+                        oscillator.frequency.linearRampToValueAtTime(1046.5, now + 0.3);
+                        gainNode.gain.setValueAtTime(0.3, now);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                        oscillator.start(now);
+                        oscillator.stop(now + 0.3);
+                        break;
+                    case 'win':
+                        [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+                            const osc = audioContext.createOscillator();
+                            const gain = audioContext.createGain();
+                            osc.connect(gain);
+                            gain.connect(audioContext.destination);
+                            osc.frequency.setValueAtTime(freq, now + i * 0.15);
+                            gain.gain.setValueAtTime(0.2, now + i * 0.15);
+                            gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.3);
+                            osc.start(now + i * 0.15);
+                            osc.stop(now + i * 0.15 + 0.3);
+                        });
+                        return;
+                    case 'lose':
+                        oscillator.type = 'sawtooth';
+                        oscillator.frequency.setValueAtTime(200, now);
+                        oscillator.frequency.linearRampToValueAtTime(100, now + 0.5);
+                        gainNode.gain.setValueAtTime(0.3, now);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                        oscillator.start(now);
+                        oscillator.stop(now + 0.5);
+                        break;
+                    case 'combo':
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(600 + combo * 50, now);
+                        gainNode.gain.setValueAtTime(0.25, now);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                        oscillator.start(now);
+                        oscillator.stop(now + 0.1);
+                        break;
+                }
+            } catch (e) {
+                console.warn('Sound error:', e);
+            }
+        }
+
+        // === TOAST NOTIFICATIONS ===
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            let icon = 'check-circle';
+            if (type === 'warning') icon = 'exclamation-triangle';
+            if (type === 'error') icon = 'times-circle';
+
+            toast.innerHTML = `<i class="fas fa-${icon}"></i><span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // === GEMINI API CONFIG ===
+        const GEMINI_API_KEY = "AIzaSyCyDuK8vxXXR0tfAtRQ6wdINv4a649VT6s";
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+        // === GAME STATE ===
+        let playerData = {
+            odins: 0,
+            level: 1,
+            maxLives: 3,
+            paddleLevel: 0,
+            speedLevel: 0,
+            multiLevel: 0,
+            highScore: 0,
+            gamesPlayedToday: 0,
+            lastPlayDate: null,
+            // Power-ups inventory
+            bombs: 0,
+            shields: 0,
+            doubles: 0,
+            // Skins
+            currentSkin: 'neon',
+            unlockedSkins: ['neon'],
+            // Daily & Tasks
+            lastDailyClaimDate: null,
+            dailyStreak: 0,
+            tasksCompleted: [],
+            walletConnected: false,
+            walletAddress: '',
+            // Stats
+            totalBricksDestroyed: 0,
+            totalGamesPlayed: 0,
+            maxCombo: 0
+        };
+
+        // Anti-cheat: simple hash
+        function generateChecksum(data) {
+            const str = JSON.stringify(data);
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return hash.toString(16);
+        }
+
+        function saveData() {
+            const dataToSave = { ...playerData, checksum: generateChecksum(playerData) };
+            localStorage.setItem('neon_breaker_v2', JSON.stringify(dataToSave));
+            updateAllUI();
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('neon_breaker_v2');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    const { checksum, ...data } = parsed;
+
+                    // Basic integrity check
+                    if (checksum === generateChecksum(data)) {
+                        playerData = { ...playerData, ...data };
+                    } else {
+                        console.warn('Data integrity check failed, using defaults');
+                    }
+                } catch (e) {
+                    console.error('Failed to load save data');
+                }
+            }
+
+            // Check daily reset
+            const today = new Date().toDateString();
+            if (playerData.lastPlayDate !== today) {
+                playerData.gamesPlayedToday = 0;
+                playerData.lastPlayDate = today;
+                saveData();
+            }
+        }
+
+        // === GAME ENGINE VARIABLES ===
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let gameRunning = false;
+        let gamePaused = false;
+        let lives = 3;
+        let score = 0;
+        let combo = 0;
+        let maxComboThisGame = 0;
+        let coinsEarnedThisGame = 0;
+        let comboTimer = null;
+
+        // Active power-ups
+        let shieldActive = false;
+        let doublePointsActive = false;
+        let doublePointsTimer = null;
+
+        let ball = { x: 0, y: 0, dx: 4, dy: -4, radius: 8, baseSpeed: 4 };
+        let paddle = { x: 0, width: 90, height: 14 };
+        let bricks = [];
+        let particles = [];
+        let powerups = []; // Falling power-ups
+
+        const BRICK_ROWS = 6;
+        const BRICK_COLS = 7;
+        const BRICK_PADDING = 4;
+        const BRICK_OFFSET_TOP = 50;
+        const BRICK_OFFSET_LEFT = 15;
+
+        // Skin colors
+        const SKINS = {
+            neon: { ball: '#ff00e6', paddle: '#00ffc4', trail: '#ff00e6' },
+            solar: { ball: '#ffd700', paddle: '#ff6b00', trail: '#ff9500' },
+            ice: { ball: '#00d4ff', paddle: '#0066ff', trail: '#00aaff' }
+        };
+
+        // === RESIZE CANVAS ===
+        function resizeCanvas() {
+            const container = document.querySelector('.main-content');
+            const maxWidth = Math.min(container.clientWidth * 0.95, 420);
+            const maxHeight = container.clientHeight * 0.85;
+
+            canvas.width = maxWidth;
+            canvas.height = Math.min(maxHeight, 550);
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // === INITIALIZE GAME OBJECTS ===
+        function initGameObjects() {
+            // Apply upgrades
+            const paddleBonus = playerData.paddleLevel * 15;
+            paddle.width = 90 + paddleBonus;
+
+            const speedReduction = playerData.speedLevel * 0.4;
+            ball.baseSpeed = Math.max(3, 4 - speedReduction);
+
+            // Reset ball position
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height - 60;
+            ball.dx = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
+            ball.dy = -ball.baseSpeed;
+
+            // Center paddle
+            paddle.x = (canvas.width - paddle.width) / 2;
+
+            // Reset game state
+            lives = playerData.maxLives;
+            score = 0;
+            combo = 0;
+            maxComboThisGame = 0;
+            coinsEarnedThisGame = 0;
+            shieldActive = false;
+            doublePointsActive = false;
+            particles = [];
+            powerups = [];
+
+            updateStatsBar();
+        }
+
+        // === CREATE BRICKS ===
+        function createDefaultBricks() {
+            bricks = [];
+            const brickWidth = (canvas.width - BRICK_OFFSET_LEFT * 2 - BRICK_PADDING * (BRICK_COLS - 1)) / BRICK_COLS;
+            const brickHeight = 22;
+
+            const colors = [
+                { bg: '#ff4757', glow: 'rgba(255,71,87,0.5)' },
+                { bg: '#ffa502', glow: 'rgba(255,165,2,0.5)' },
+                { bg: '#2ed573', glow: 'rgba(46,213,115,0.5)' },
+                { bg: '#1e90ff', glow: 'rgba(30,144,255,0.5)' },
+                { bg: '#ff00e6', glow: 'rgba(255,0,230,0.5)' },
+                { bg: '#00ffc4', glow: 'rgba(0,255,196,0.5)' }
+            ];
+
+            for (let r = 0; r < BRICK_ROWS; r++) {
+                bricks[r] = [];
+                for (let c = 0; c < BRICK_COLS; c++) {
+                    const x = BRICK_OFFSET_LEFT + c * (brickWidth + BRICK_PADDING);
+                    const y = BRICK_OFFSET_TOP + r * (brickHeight + BRICK_PADDING);
+
+                    // Some bricks have power-ups
+                    let powerup = null;
+                    if (Math.random() < 0.1) {
+                        const types = ['coin', 'expand', 'slow', 'multi'];
+                        powerup = types[Math.floor(Math.random() * types.length)];
+                    }
+
+                    // Higher rows = stronger bricks
+                    const hits = r < 2 ? 2 : 1;
+
+                    bricks[r][c] = {
+                        x, y,
+                        width: brickWidth,
+                        height: brickHeight,
+                        status: 1,
+                        hits: hits,
+                        maxHits: hits,
+                        color: colors[r % colors.length],
+                        powerup: powerup
+                    };
+                }
+            }
+        }
+
+        // === AI LEVEL GENERATION ===
+        async function generateAILevel() {
+            const levelDiff = Math.min(playerData.level, 10);
+
+            const prompt = `Create a brick breaker level for a ${BRICK_COLS} columns x ${BRICK_ROWS} rows grid.
+            Difficulty level: ${levelDiff}/10.
+            Rules:
+            - Output a 2D array where each cell is 0 (empty), 1 (normal brick), or 2 (strong brick needing 2 hits)
+            - Make it visually interesting with patterns (symmetry, shapes, letters)
+            - Higher difficulty = more strong bricks and complex patterns
+            - At least 60% of cells should have bricks
+            Output ONLY the JSON 2D array, no explanation.`;
+
+            try {
+                const response = await fetch(GEMINI_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            temperature: 0.8,
+                            maxOutputTokens: 500
+                        }
+                    })
+                });
+
+                if (!response.ok) throw new Error('API request failed');
+
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (text) {
+                    // Extract JSON from response
+                    const jsonMatch = text.match(/\[\s*\[[\s\S]*\]\s*\]/);
+                    if (jsonMatch) {
+                        const layout = JSON.parse(jsonMatch[0]);
+                        applyAILayout(layout);
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.error("AI Level generation failed:", e);
+            }
+
+            // Fallback to default
+            createDefaultBricks();
+            return false;
+        }
+
+        function applyAILayout(layout) {
+            bricks = [];
+            const brickWidth = (canvas.width - BRICK_OFFSET_LEFT * 2 - BRICK_PADDING * (BRICK_COLS - 1)) / BRICK_COLS;
+            const brickHeight = 22;
+
+            const colors = [
+                { bg: '#ff4757', glow: 'rgba(255,71,87,0.5)' },
+                { bg: '#ffa502', glow: 'rgba(255,165,2,0.5)' },
+                { bg: '#2ed573', glow: 'rgba(46,213,115,0.5)' },
+                { bg: '#1e90ff', glow: 'rgba(30,144,255,0.5)' },
+                { bg: '#ff00e6', glow: 'rgba(255,0,230,0.5)' },
+                { bg: '#00ffc4', glow: 'rgba(0,255,196,0.5)' }
+            ];
+
+            for (let r = 0; r < BRICK_ROWS; r++) {
+                bricks[r] = [];
+                for (let c = 0; c < BRICK_COLS; c++) {
+                    const x = BRICK_OFFSET_LEFT + c * (brickWidth + BRICK_PADDING);
+                    const y = BRICK_OFFSET_TOP + r * (brickHeight + BRICK_PADDING);
+
+                    // Get status from AI layout (with bounds checking)
+                    let status = 1;
+                    let hits = 1;
+                    if (layout[r] && layout[r][c] !== undefined) {
+                        status = layout[r][c] > 0 ? 1 : 0;
+                        hits = layout[r][c] === 2 ? 2 : 1;
+                    }
+
+                    let powerup = null;
+                    if (status === 1 && Math.random() < 0.12) {
+                        const types = ['coin', 'expand', 'slow', 'multi', 'life'];
+                        powerup = types[Math.floor(Math.random() * types.length)];
+                    }
+
+                    bricks[r][c] = {
+                        x, y,
+                        width: brickWidth,
+                        height: brickHeight,
+                        status: status,
+                        hits: hits,
+                        maxHits: hits,
+                        color: colors[r % colors.length],
+                        powerup: powerup
+                    };
+                }
+            }
+        }
+
+        // === PARTICLE SYSTEM ===
+        function createParticles(x, y, color, count = 8) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    dx: (Math.random() - 0.5) * 6,
+                    dy: (Math.random() - 0.5) * 6,
+                    radius: Math.random() * 3 + 2,
+                    color: color,
+                    life: 1,
+                    decay: 0.02 + Math.random() * 0.02
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.dx;
+                p.y += p.dy;
+                p.dy += 0.1; // gravity
+                p.life -= p.decay;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        // === POWER-UP DROPS ===
+        function spawnPowerup(x, y, type) {
+            const icons = {
+                coin: '💰',
+                expand: '↔️',
+                slow: '🐢',
+                multi: '⚡',
+                life: '❤️'
+            };
+
+            powerups.push({
+                x: x,
+                y: y,
+                dy: 2,
+                type: type,
+                icon: icons[type] || '⭐',
+                radius: 12
+            });
+        }
+
+        function updatePowerups() {
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const p = powerups[i];
+                p.y += p.dy;
+
+                // Check collision with paddle
+                if (p.y + p.radius > canvas.height - paddle.height - 10 &&
+                    p.y - p.radius < canvas.height - 10 &&
+                    p.x > paddle.x && p.x < paddle.x + paddle.width) {
+
+                    applyPowerup(p.type);
+                    powerups.splice(i, 1);
+                    continue;
+                }
+
+                // Remove if off screen
+                if (p.y > canvas.height + 20) {
+                    powerups.splice(i, 1);
+                }
+            }
+        }
+
+        function applyPowerup(type) {
+            playSound('powerup');
+
+            switch(type) {
+                case 'coin':
+                    const bonus = 10 * (1 + playerData.multiLevel * 0.25);
+                    playerData.coins += bonus;
+                    coinsEarnedThisGame += bonus;
+                    showToast(`+${Math.floor(bonus)} Coins!`, 'warning');
+                    break;
+                case 'expand':
+                    paddle.width = Math.min(paddle.width + 20, 180);
+                    showToast('Paddle Expanded!');
+                    break;
+                case 'slow':
+                    ball.dx *= 0.8;
+                    ball.dy *= 0.8;
+                    showToast('Ball Slowed!');
+                    break;
+                case 'multi':
+                    doublePointsActive = true;
+                    clearTimeout(doublePointsTimer);
+                    doublePointsTimer = setTimeout(() => {
+                        doublePointsActive = false;
+                        updatePowerupBar();
+                    }, 15000);
+                    showToast('Double Points! (15s)');
+                    break;
+                case 'life':
+                    lives++;
+                    showToast('+1 Life!');
+                    break;
+            }
+
+            updatePowerupBar();
+            saveData();
+        }
+
+        function updatePowerupBar() {
+            const bar = document.getElementById('powerupBar');
+            bar.innerHTML = '';
+
+            if (shieldActive) {
+                bar.innerHTML += '<div class="powerup-active"><i class="fas fa-shield-alt"></i> Shield</div>';
+            }
+            if (doublePointsActive) {
+                bar.innerHTML += '<div class="powerup-active"><i class="fas fa-bolt"></i> x2 Points</div>';
+            }
+        }
+
+        function drawPowerups() {
+            powerups.forEach(p => {
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(p.icon, p.x, p.y);
+            });
+        }
+
+        // === MAIN GAME LOOP ===
+        function draw() {
+            if (!gameRunning || gamePaused) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw background grid
+            ctx.strokeStyle = 'rgba(0,255,196,0.03)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 30) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+            for (let i = 0; i < canvas.height; i += 30) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+
+            // Draw bricks
+            let activeBricks = 0;
+            for (let r = 0; r < BRICK_ROWS; r++) {
+                for (let c = 0; c < BRICK_COLS; c++) {
+                    const b = bricks[r][c];
+                    if (b.status === 1) {
+                        activeBricks++;
+
+                        // Glow effect
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = b.color.glow;
+
+                        // Draw brick
+                        ctx.fillStyle = b.color.bg;
+                        if (b.hits < b.maxHits) {
+                            ctx.fillStyle = adjustColor(b.color.bg, -30);
+                        }
+
+                        ctx.beginPath();
+                        ctx.roundRect(b.x, b.y, b.width, b.height, 4);
+                        ctx.fill();
+
+                        // Strong brick indicator
+                        if (b.hits === 2) {
+                            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                            ctx.beginPath();
+                            ctx.roundRect(b.x + 2, b.y + 2, b.width - 4, b.height/2 - 2, 2);
+                            ctx.fill();
+                        }
+
+                        ctx.shadowBlur = 0;
+
+                        // Ball-brick collision
+                        if (ball.x + ball.radius > b.x &&
+                            ball.x - ball.radius < b.x + b.width &&
+                            ball.y + ball.radius > b.y &&
+                            ball.y - ball.radius < b.y + b.height) {
+
+                            ball.dy = -ball.dy;
+                            b.hits--;
+
+                            if (b.hits <= 0) {
+                                b.status = 0;
+
+                                // Combo system
+                                combo++;
+                                clearTimeout(comboTimer);
+                                comboTimer = setTimeout(() => { combo = 0; updateStatsBar(); }, 2000);
+                                maxComboThisGame = Math.max(maxComboThisGame, combo);
+
+                                // Calculate coins
+                                let coinReward = 1 * (1 + playerData.multiLevel * 0.25);
+                                if (doublePointsActive) coinReward *= 2;
+                                coinReward *= (1 + Math.min(combo, 10) * 0.1); // Combo bonus
+                                coinReward = Math.floor(coinReward);
+
+                                playerData.coins += coinReward;
+                                coinsEarnedThisGame += coinReward;
+                                playerData.totalBricksDestroyed++;
+
+                                score += 10 * (1 + Math.floor(combo / 5));
+
+                                // Spawn power-up
+                                if (b.powerup) {
+                                    spawnPowerup(b.x + b.width/2, b.y + b.height/2, b.powerup);
+                                }
+
+                                // Particles
+                                createParticles(b.x + b.width/2, b.y + b.height/2, b.color.bg, 10);
+
+                                playSound(combo > 3 ? 'combo' : 'brick');
+                            } else {
+                                createParticles(ball.x, ball.y, b.color.bg, 4);
+                                playSound('hit');
+                            }
+
+                            updateStatsBar();
+                            saveData();
+                        }
+                    }
+                }
+            }
+
+            // Check win
+            if (activeBricks === 0) {
+                handleWin();
+                return;
+            }
+
+            // Draw paddle
+            const skin = SKINS[playerData.currentSkin] || SKINS.neon;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = skin.paddle;
+            ctx.fillStyle = skin.paddle;
+            ctx.beginPath();
+            ctx.roundRect(paddle.x, canvas.height - paddle.height - 10, paddle.width, paddle.height, 6);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Draw shield indicator
+            if (shieldActive) {
+                ctx.strokeStyle = 'rgba(0,212,255,0.5)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height - 5);
+                ctx.lineTo(canvas.width, canvas.height - 5);
+                ctx.stroke();
+            }
+
+            // Draw ball with trail
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = skin.trail;
+            ctx.fillStyle = skin.ball;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Move ball
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            // Wall collision
+            if (ball.x + ball.dx > canvas.width - ball.radius || ball.x + ball.dx < ball.radius) {
+                ball.dx = -ball.dx;
+                playSound('hit');
+            }
+            if (ball.y + ball.dy < ball.radius) {
+                ball.dy = -ball.dy;
+                playSound('hit');
+            }
+
+            // Paddle collision
+            if (ball.y + ball.dy > canvas.height - ball.radius - paddle.height - 10) {
+                if (ball.x > paddle.x - ball.radius && ball.x < paddle.x + paddle.width + ball.radius) {
+                    // Calculate bounce angle based on hit position
+                    const hitPos = (ball.x - paddle.x) / paddle.width;
+                    const angle = (hitPos - 0.5) * Math.PI * 0.7;
+                    const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+
+                    ball.dx = Math.sin(angle) * speed;
+                    ball.dy = -Math.abs(Math.cos(angle) * speed);
+
+                    // Speed up slightly each hit
+                    const maxSpeed = 8;
+                    if (Math.abs(ball.dy) < maxSpeed) {
+                        ball.dx *= 1.01;
+                        ball.dy *= 1.01;
+                    }
+
+                    playSound('hit');
+                } else if (ball.y + ball.dy > canvas.height - ball.radius) {
+                    // Ball lost
+                    if (shieldActive) {
+                        shieldActive = false;
+                        ball.dy = -Math.abs(ball.dy);
+                        showToast('Shield Protected!', 'warning');
+                        updatePowerupBar();
+                    } else {
+                        lives--;
+                        combo = 0;
+                        playSound('lose');
+                        updateStatsBar();
+
+                        if (lives <= 0) {
+                            handleGameOver();
+                            return;
+                        }
+
+                        // Reset ball
+                        ball.x = canvas.width / 2;
+                        ball.y = canvas.height - 60;
+                        ball.dx = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
+                        ball.dy = -ball.baseSpeed;
+                    }
+                }
+            }
+
+            // Update & draw particles
+            updateParticles();
+            drawParticles();
+
+            // Update & draw power-ups
+            updatePowerups();
+            drawPowerups();
+
+            requestAnimationFrame(draw);
+        }
+
+        function adjustColor(color, amount) {
+            const hex = color.replace('#', '');
+            const r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
+            const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
+            const b = Math.max(0, Math.min(255, parseInt(hex.substr(4, 2), 16) + amount));
+            return `rgb(${r},${g},${b})`;
+        }
+
+        // === INPUT HANDLING ===
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const relativeX = touch.clientX - rect.left;
+            paddle.x = Math.max(0, Math.min(canvas.width - paddle.width, relativeX - paddle.width / 2));
+        }, { passive: false });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const relativeX = e.clientX - rect.left;
+            paddle.x = Math.max(0, Math.min(canvas.width - paddle.width, relativeX - paddle.width / 2));
+        });
+
+        // Touch to start
+        canvas.addEventListener('click', () => {
+            initAudio();
+        });
+
+        // === GAME CONTROL ===
+        const overlay = document.getElementById('gameOverlay');
+        const mainBtn = document.getElementById('mainBtn');
+        const overlayTitle = document.getElementById('overlayTitle');
+        const overlaySub = document.getElementById('overlaySub');
+        const overlayStats = document.getElementById('overlayStats');
+        const aiLoading = document.getElementById('aiLoading');
+
+        mainBtn.addEventListener('click', async () => {
+            initAudio();
+
+            const btnText = mainBtn.innerText.trim();
+
+            if (btnText === "NEXT LEVEL") {
+                mainBtn.classList.add('hidden');
+                aiLoading.classList.remove('hidden');
+
+                await generateAILevel();
+
+                aiLoading.classList.add('hidden');
+                mainBtn.classList.remove('hidden');
+            } else {
+                createDefaultBricks();
+            }
+
+            startGame();
+        });
+
+        function startGame() {
+            overlay.classList.add('hidden');
+            overlayStats.classList.add('hidden');
+            initGameObjects();
+            gameRunning = true;
+
+            playerData.gamesPlayedToday++;
+            playerData.totalGamesPlayed++;
+            saveData();
+
+            updatePlay5Button();
+            draw();
+        }
+
+        function handleWin() {
+            gameRunning = false;
+
+            const levelBonus = 50 + playerData.level * 10;
+            playerData.coins += levelBonus;
+            coinsEarnedThisGame += levelBonus;
+            playerData.level++;
+
+            if (maxComboThisGame > playerData.maxCombo) {
+                playerData.maxCombo = maxComboThisGame;
+            }
+
+            saveData();
+            playSound('win');
+
+            overlayTitle.innerHTML = "LEVEL COMPLETE!";
+            overlaySub.innerHTML = `Level ${playerData.level - 1} cleared!`;
+
+            document.getElementById('statCoins').textContent = coinsEarnedThisGame;
+            document.getElementById('statCombo').textContent = `x${maxComboThisGame}`;
+            overlayStats.classList.remove('hidden');
+
+            mainBtn.innerText = "NEXT LEVEL";
+            overlay.classList.remove('hidden');
+
+            showToast(`+${levelBonus} Level Bonus!`, 'success');
+        }
+
+        function handleGameOver() {
+            gameRunning = false;
+
+            if (score > playerData.highScore) {
+                playerData.highScore = score;
+                showToast('New High Score!', 'warning');
+            }
+
+            if (maxComboThisGame > playerData.maxCombo) {
+                playerData.maxCombo = maxComboThisGame;
+            }
+
+            saveData();
+
+            overlayTitle.innerHTML = "GAME OVER";
+            overlaySub.innerHTML = `High Score: ${playerData.highScore}`;
+
+            document.getElementById('statCoins').textContent = coinsEarnedThisGame;
+            document.getElementById('statCombo').textContent = `x${maxComboThisGame}`;
+            overlayStats.classList.remove('hidden');
+
+            mainBtn.innerText = "TRY AGAIN";
+            overlay.classList.remove('hidden');
+        }
+
+        function updateStatsBar() {
+            document.getElementById('livesDisplay').textContent = lives;
+            document.getElementById('comboDisplay').textContent = `x${combo}`;
+            document.getElementById('scoreDisplay').textContent = score;
+        }
+
+        // === UI NAVIGATION ===
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+
+            if (tabName === 'shop') {
+                document.getElementById('shopScreen').classList.add('active');
+                updateShopUI();
+            } else if (tabName === 'earn') {
+                document.getElementById('earnScreen').classList.add('active');
+                updateEarnUI();
+            } else if (tabName === 'leaderboard') {
+                document.getElementById('leaderboardScreen').classList.add('active');
+                updateLeaderboard();
+            }
+
+            // Pause game when leaving
+            if (tabName !== 'game') {
+                gamePaused = true;
+            } else {
+                gamePaused = false;
+                if (gameRunning) draw();
+            }
+        }
+
+        // === SHOP FUNCTIONS ===
+        function switchShopTab(tab) {
+            document.querySelectorAll('#shopScreen .section-tab').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+
+            document.getElementById('shopUpgrades').classList.add('hidden');
+            document.getElementById('shopPowerups').classList.add('hidden');
+            document.getElementById('shopSkins').classList.add('hidden');
+
+            document.getElementById('shop' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('hidden');
+        }
+
+        function updateShopUI() {
+            document.getElementById('shopLives').textContent = playerData.maxLives;
+            document.getElementById('shopPaddle').textContent = playerData.paddleLevel;
+            document.getElementById('shopSpeed').textContent = playerData.speedLevel;
+            document.getElementById('shopMulti').textContent = playerData.multiLevel;
+
+            document.getElementById('bombCount').textContent = playerData.bombs;
+            document.getElementById('shieldCount').textContent = playerData.shields;
+            document.getElementById('doubleCount').textContent = playerData.doubles;
+
+            // Disable maxed upgrades
+            document.getElementById('btnPaddle').disabled = playerData.paddleLevel >= 5;
+            document.getElementById('btnSpeed').disabled = playerData.speedLevel >= 3;
+            document.getElementById('btnMulti').disabled = playerData.multiLevel >= 4;
+        }
+
+        function buyUpgrade(type, cost) {
+            if (playerData.coins < cost) {
+                showToast('Không đủ Coins!', 'error');
+                return;
+            }
+
+            let success = false;
+
+            switch(type) {
+                case 'life':
+                    playerData.maxLives++;
+                    success = true;
+                    break;
+                case 'paddle':
+                    if (playerData.paddleLevel < 5) {
+                        playerData.paddleLevel++;
+                        success = true;
+                    }
+                    break;
+                case 'speed':
+                    if (playerData.speedLevel < 3) {
+                        playerData.speedLevel++;
+                        success = true;
+                    }
+                    break;
+                case 'multi':
+                    if (playerData.multiLevel < 4) {
+                        playerData.multiLevel++;
+                        success = true;
+                    }
+                    break;
+            }
+
+            if (success) {
+                playerData.coins -= cost;
+                saveData();
+                updateShopUI();
+                showToast('Nâng cấp thành công!');
+                playSound('coin');
+            }
+        }
+
+        function buyPowerup(type, cost) {
+            if (playerData.coins < cost) {
+                showToast('Không đủ Coins!', 'error');
+                return;
+            }
+
+            playerData.coins -= cost;
+
+            switch(type) {
+                case 'bomb': playerData.bombs++; break;
+                case 'shield': playerData.shields++; break;
+                case 'double': playerData.doubles++; break;
+            }
+
+            saveData();
+            updateShopUI();
+            showToast('Đã mua Power-up!');
+            playSound('coin');
+        }
+
+        function buySkin(skin, cost) {
+            if (playerData.unlockedSkins.includes(skin)) {
+                playerData.currentSkin = skin;
+                saveData();
+                showToast('Đã trang bị skin!');
+                return;
+            }
+
+            if (playerData.coins < cost) {
+                showToast('Không đủ Coins!', 'error');
+                return;
+            }
+
+            playerData.coins -= cost;
+            playerData.unlockedSkins.push(skin);
+            playerData.currentSkin = skin;
+            saveData();
+            showToast('Đã mua và trang bị skin!');
+            playSound('coin');
+        }
+
+        // === EARN/TASKS FUNCTIONS ===
+        function updateEarnUI() {
+            updateDailyReward();
+            updateTasks();
+            updateWalletUI();
+            updatePlay5Button();
+            document.getElementById('gamesPlayed').textContent = playerData.gamesPlayedToday;
+        }
+
+        function updateDailyReward() {
+            const today = new Date().toDateString();
+            const streakDays = document.getElementById('streakDays');
+            const claimBtn = document.getElementById('claimDailyBtn');
+            const dailyText = document.getElementById('dailyRewardText');
+            const dailyAmount = document.getElementById('dailyAmount');
+
+            // Check streak
+            if (playerData.lastDailyClaimDate) {
+                const lastDate = new Date(playerData.lastDailyClaimDate);
+                const todayDate = new Date(today);
+                const diffDays = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+
+                if (diffDays > 1) {
+                    playerData.dailyStreak = 0;
+                }
+            }
+
+            // Generate streak display
+            streakDays.innerHTML = '';
+            for (let i = 1; i <= 7; i++) {
+                const day = document.createElement('div');
+                day.className = 'streak-day';
+                if (i <= playerData.dailyStreak) day.classList.add('claimed');
+                if (i === playerData.dailyStreak + 1) day.classList.add('today');
+                day.textContent = i;
+                streakDays.appendChild(day);
+            }
+
+            // Calculate reward
+            const baseReward = 100;
+            const streakBonus = Math.min(playerData.dailyStreak, 6) * 50;
+            const totalReward = baseReward + streakBonus;
+            dailyAmount.textContent = totalReward;
+
+            // Check if already claimed today
+            if (playerData.lastDailyClaimDate === today) {
+                claimBtn.disabled = true;
+                claimBtn.textContent = 'Claimed ✓';
+                claimBtn.classList.add('claimed');
+                dailyText.textContent = `Quay lại ngày mai! Streak: ${playerData.dailyStreak} ngày`;
+            } else {
+                claimBtn.disabled = false;
+                claimBtn.innerHTML = `Claim ${totalReward} <i class="fas fa-coins"></i>`;
+                claimBtn.classList.remove('claimed');
+                dailyText.textContent = `Streak hiện tại: ${playerData.dailyStreak} ngày`;
+
+                // Show badge
+                document.getElementById('earnBadge').classList.remove('hidden');
+            }
+        }
+
+        function claimDailyReward() {
+            const today = new Date().toDateString();
+            if (playerData.lastDailyClaimDate === today) return;
+
+            const baseReward = 100;
+            const streakBonus = Math.min(playerData.dailyStreak, 6) * 50;
+            const totalReward = baseReward + streakBonus;
+
+            playerData.coins += totalReward;
+            playerData.dailyStreak++;
+            playerData.lastDailyClaimDate = today;
+
+            if (playerData.dailyStreak > 7) playerData.dailyStreak = 7;
+
+            saveData();
+            updateDailyReward();
+
+            showToast(`+${totalReward} Daily Bonus!`, 'warning');
+            playSound('coin');
+
+            document.getElementById('earnBadge').classList.add('hidden');
+        }
+
+        function updateTasks() {
+            const tasks = ['channel', 'twitter'];
+            tasks.forEach(task => {
+                const btn = document.getElementById('btn' + task.charAt(0).toUpperCase() + task.slice(1).replace('channel', 'JoinChannel'));
+                if (playerData.tasksCompleted.includes(task)) {
+                    if (btn) {
+                        btn.textContent = 'Done ✓';
+                        btn.disabled = true;
+                        btn.classList.add('claimed');
+                    }
+                }
+            });
+        }
+
+        function doTask(task, reward) {
+            if (playerData.tasksCompleted.includes(task)) {
+                showToast('Đã hoàn thành task này!', 'warning');
+                return;
+            }
+
+            // Simulate task completion
+            let taskUrl = '';
+            switch(task) {
+                case 'channel':
+                    taskUrl = 'https://t.me/neonbrickgame';
+                    break;
+                case 'twitter':
+                    taskUrl = 'https://x.com/CachepStudio';
+                    break;
+            }
+
+            // Open link
+            if (tg && tg.openTelegramLink && task === 'channel') {
+                tg.openTelegramLink(taskUrl);
+            } else {
+                window.open(taskUrl, '_blank');
+            }
+
+            // Give reward after delay (simulating verification)
+            setTimeout(() => {
+                playerData.coins += reward;
+                playerData.tasksCompleted.push(task);
+                saveData();
+                updateTasks();
+                showToast(`+${reward} Coins!`, 'success');
+                playSound('coin');
+            }, 2000);
+        }
+
+        function inviteFriends() {
+            const shareText = `🎮 Chơi Neon Brick Breaker và kiếm Coins!\n\n🚀 Play-to-Earn trên Telegram\n💰 Mời bạn bè nhận 1000 Coins\n\n`;
+            const shareUrl = `https://t.me/NeonBrickGameBot/Play`;
+
+            if (tg && tg.openTelegramLink) {
+                const inviteLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+                tg.openTelegramLink(inviteLink);
+            } else {
+                navigator.share?.({
+                    title: 'Neon Brick Breaker',
+                    text: shareText,
+                    url: shareUrl
+                }).catch(() => {
+                    showToast('Copy link và chia sẻ với bạn bè!', 'warning');
+                });
+            }
+        }
+
+        function updatePlay5Button() {
+            const btn = document.getElementById('btnPlay5');
+            const count = playerData.gamesPlayedToday;
+
+            if (count >= 5 && !playerData.tasksCompleted.includes('play5_' + new Date().toDateString())) {
+                btn.disabled = false;
+                btn.textContent = 'Claim';
+            } else if (playerData.tasksCompleted.includes('play5_' + new Date().toDateString())) {
+                btn.disabled = true;
+                btn.textContent = 'Done ✓';
+                btn.classList.add('claimed');
+            } else {
+                btn.disabled = true;
+                btn.textContent = `${count}/5`;
+            }
+        }
+
+        function claimPlay5() {
+            const taskId = 'play5_' + new Date().toDateString();
+            if (playerData.tasksCompleted.includes(taskId)) return;
+
+            playerData.coins += 200;
+            playerData.tasksCompleted.push(taskId);
+            saveData();
+            updatePlay5Button();
+            showToast('+200 Coins!', 'success');
+            playSound('coin');
+        }
+
+        // === TON WALLET ===
+        let tonConnectUI = null;
+
+        async function initTonConnect() {
+            try {
+                tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+                    manifestUrl: 'https://anhkhoavanhua.github.io/neon-brick-game/tonconnect-manifest.json',
+                    buttonRootId: null
+                });
+
+                tonConnectUI.onStatusChange(wallet => {
+                    if (wallet) {
+                        playerData.walletConnected = true;
+                        playerData.walletAddress = wallet.account.address;
+                        saveData();
+                        updateWalletUI();
+
+                        if (!playerData.tasksCompleted.includes('wallet')) {
+                            playerData.coins += 1000;
+                            playerData.tasksCompleted.push('wallet');
+                            saveData();
+                            showToast('+1000 Coins for connecting wallet!', 'success');
+                        }
+                    }
+                });
+            } catch (e) {
+                console.warn('TON Connect initialization failed:', e);
+            }
+        }
+
+        async function connectTonWallet() {
+            try {
+                if (tonConnectUI) {
+                    await tonConnectUI.connectWallet();
+                } else {
+                    // Fallback for demo
+                    showToast('TON Connect đang được cấu hình...', 'warning');
+
+                    // Demo mode
+                    setTimeout(() => {
+                        playerData.walletConnected = true;
+                        playerData.walletAddress = 'UQD...demo...xyz';
+
+                        if (!playerData.tasksCompleted.includes('wallet')) {
+                            playerData.coins += 1000;
+                            playerData.tasksCompleted.push('wallet');
+                            showToast('+1000 Coins (Demo Mode)!', 'success');
+                        }
+
+                        saveData();
+                        updateWalletUI();
+                    }, 1500);
+                }
+            } catch (e) {
+                showToast('Không thể kết nối ví', 'error');
+            }
+        }
+
+        function updateWalletUI() {
+            const notConnected = document.getElementById('walletNotConnected');
+            const connected = document.getElementById('walletConnected');
+            const addressEl = document.getElementById('walletAddress');
+
+            if (playerData.walletConnected) {
+                notConnected.classList.add('hidden');
+                connected.classList.remove('hidden');
+
+                // Shorten address
+                const addr = playerData.walletAddress;
+                addressEl.textContent = addr.length > 20
+                    ? addr.slice(0, 6) + '...' + addr.slice(-4)
+                    : addr;
+            } else {
+                notConnected.classList.remove('hidden');
+                connected.classList.add('hidden');
+            }
+        }
+
+        // === LEADERBOARD ===
+        function updateLeaderboard() {
+            const list = document.getElementById('leaderboardList');
+
+            // Mock leaderboard data (in production, fetch from server)
+            const mockData = [
+                { name: 'CryptoKing', score: 125000, avatar: '👑' },
+                { name: 'NeonMaster', score: 98500, avatar: '⚡' },
+                { name: 'BrickDestroyer', score: 87200, avatar: '🔥' },
+                { name: 'TONWhale', score: 76800, avatar: '🐋' },
+                { name: 'GameFiPro', score: 65400, avatar: '🎮' },
+                { name: 'Player123', score: 54300, avatar: '🎯' },
+                { name: 'CoinHunter', score: 43200, avatar: '💰' },
+                { name: 'NightOwl', score: 32100, avatar: '🦉' }
+            ];
+
+            // Add current player to mock data for ranking
+            const playerEntry = {
+                name: document.getElementById('userName').textContent,
+                score: playerData.highScore,
+                avatar: '🎮',
+                isPlayer: true
+            };
+
+            const allPlayers = [...mockData, playerEntry].sort((a, b) => b.score - a.score);
+            const playerRank = allPlayers.findIndex(p => p.isPlayer) + 1;
+
+            document.getElementById('yourRank').textContent = playerRank;
+            document.getElementById('yourHighScore').textContent = playerData.highScore.toLocaleString();
+
+            list.innerHTML = mockData.slice(0, 8).map((player, index) => {
+                const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : '';
+                return `
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-rank ${rankClass}">${index + 1}</div>
+                        <div style="font-size: 1.5rem;">${player.avatar}</div>
+                        <div class="leaderboard-info">
+                            <div class="leaderboard-name">${player.name}</div>
+                        </div>
+                        <div class="leaderboard-score">${player.score.toLocaleString()}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function switchLeaderboardTab(tab) {
+            document.querySelectorAll('#leaderboardScreen .section-tab').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // In production, fetch different data based on tab
+            updateLeaderboard();
+        }
+
+        // === UPDATE ALL UI ===
+        function updateAllUI() {
+            document.getElementById('coinDisplay').textContent = playerData.coins.toLocaleString();
+            document.getElementById('levelDisplay').textContent = `Level ${playerData.level}`;
+
+            // Get Telegram user info
+            if (tg?.initDataUnsafe?.user) {
+                const user = tg.initDataUnsafe.user;
+                document.getElementById('userName').textContent = user.first_name;
+                document.getElementById('userAvatar').textContent = user.first_name.charAt(0).toUpperCase();
+            }
+        }
+
+        // === INITIALIZE ===
+        function init() {
+            loadData();
+            updateAllUI();
+            createDefaultBricks();
+            initTonConnect();
+
+            // Check for unclaimed daily reward
+            const today = new Date().toDateString();
+            if (playerData.lastDailyClaimDate !== today) {
+                document.getElementById('earnBadge').classList.remove('hidden');
+            }
+
+            // Draw initial frame
+            ctx.fillStyle = '#010409';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        init();
+    </script>
+</body>
+</html>
