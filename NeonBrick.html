@@ -482,6 +482,162 @@
             font-weight: 700;
         }
 
+        /* === SETTINGS MODAL === */
+        .settings-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(0,255,196,0.3);
+            color: var(--primary);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .settings-btn:hover {
+            background: rgba(0,255,196,0.2);
+            transform: rotate(45deg);
+        }
+
+        .settings-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .settings-content {
+            background: linear-gradient(180deg, rgba(30,35,50,0.98) 0%, rgba(15,20,30,0.98) 100%);
+            border-radius: 20px;
+            padding: 24px;
+            width: 100%;
+            max-width: 340px;
+            border: 1px solid rgba(0,255,196,0.2);
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .settings-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .settings-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .settings-close:hover {
+            background: rgba(255,0,100,0.3);
+            color: #fff;
+        }
+
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .settings-item:last-child { border-bottom: none; }
+
+        .settings-item-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+        }
+
+        .settings-item-label i {
+            color: var(--primary);
+            width: 20px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.1);
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        .reset-btn {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255,50,50,0.1);
+            border: 1px solid rgba(255,50,50,0.3);
+            border-radius: 10px;
+            color: #ff5050;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+        }
+
+        .reset-btn:hover {
+            background: rgba(255,50,50,0.2);
+        }
+
         /* === OVERLAYS === */
         .overlay {
             position: absolute;
@@ -743,12 +899,17 @@
                 </div>
             </div>
         </div>
-        <div class="balance-container">
-            <div class="coin-balance">
-                <i class="fas fa-coins"></i>
-                <span id="coinDisplay">0</span>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="balance-container">
+                <div class="coin-balance">
+                    <i class="fas fa-coins"></i>
+                    <span id="coinDisplay">0</span>
+                </div>
+                <div class="balance-label">Neon Coins</div>
             </div>
-            <div class="balance-label">Neon Coins</div>
+            <button class="settings-btn" onclick="openSettings()">
+                <i class="fas fa-cog"></i>
+            </button>
         </div>
     </div>
 
@@ -967,7 +1128,7 @@
                     <h4>Join Official Channel</h4>
                     <p>Tham gia channel nhận <span class="reward">+500 Coins</span></p>
                 </div>
-                <button class="btn-action" id="btnJoinChannel" onclick="doTask('channel', 500)">Join</button>
+                <button class="btn-action" id="btnChannel" onclick="startTask('channel', 500)">Go</button>
             </div>
 
             <div class="card" id="taskTwitter">
@@ -976,7 +1137,7 @@
                     <h4>Follow Twitter</h4>
                     <p>Follow nhận <span class="reward">+300 Coins</span></p>
                 </div>
-                <button class="btn-action" id="btnTwitter" onclick="doTask('twitter', 300)">Follow</button>
+                <button class="btn-action" id="btnTwitter" onclick="startTask('twitter', 300)">Go</button>
             </div>
 
             <div class="card">
@@ -985,7 +1146,7 @@
                     <h4>Invite Friends</h4>
                     <p>Mời bạn bè nhận <span class="reward">+1000 Coins/bạn</span></p>
                 </div>
-                <button class="btn-action" onclick="inviteFriends()">Invite</button>
+                <button class="btn-action" id="btnInvite" onclick="inviteFriends()">Share</button>
             </div>
 
             <div class="card">
@@ -1042,6 +1203,55 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="settings-modal hidden">
+        <div class="settings-content">
+            <div class="settings-header">
+                <h2 class="settings-title">Settings</h2>
+                <button class="settings-close" onclick="closeSettings()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="settings-item">
+                <div class="settings-item-label">
+                    <i class="fas fa-volume-up"></i>
+                    <span>Sound Effects</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="soundToggle" checked onchange="toggleSound()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="settings-item">
+                <div class="settings-item-label">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span>Vibration</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="vibrationToggle" checked onchange="toggleVibration()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="settings-item">
+                <div class="settings-item-label">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="notificationToggle" checked onchange="toggleNotification()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <button class="reset-btn" onclick="resetProgress()">
+                <i class="fas fa-trash-alt"></i> Reset All Progress
+            </button>
+        </div>
+    </div>
+
     <script>
         // === TELEGRAM WEB APP INIT ===
         const tg = window.Telegram?.WebApp;
@@ -1049,6 +1259,79 @@
             tg.ready();
             tg.expand();
             tg.enableClosingConfirmation();
+        }
+
+        // === SETTINGS ===
+        let gameSettings = {
+            soundEnabled: true,
+            vibrationEnabled: true,
+            notificationEnabled: true
+        };
+
+        function loadSettings() {
+            const saved = localStorage.getItem('neonBrickSettings');
+            if (saved) {
+                gameSettings = { ...gameSettings, ...JSON.parse(saved) };
+            }
+            // Update UI toggles
+            document.getElementById('soundToggle').checked = gameSettings.soundEnabled;
+            document.getElementById('vibrationToggle').checked = gameSettings.vibrationEnabled;
+            document.getElementById('notificationToggle').checked = gameSettings.notificationEnabled;
+        }
+
+        function saveSettings() {
+            localStorage.setItem('neonBrickSettings', JSON.stringify(gameSettings));
+        }
+
+        function openSettings() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+            gamePaused = true;
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.add('hidden');
+            if (gameRunning) {
+                gamePaused = false;
+                draw();
+            }
+        }
+
+        function toggleSound() {
+            gameSettings.soundEnabled = document.getElementById('soundToggle').checked;
+            saveSettings();
+            if (gameSettings.soundEnabled) {
+                playSound('coin');
+            }
+        }
+
+        function toggleVibration() {
+            gameSettings.vibrationEnabled = document.getElementById('vibrationToggle').checked;
+            saveSettings();
+            if (gameSettings.vibrationEnabled) {
+                vibrate(50);
+            }
+        }
+
+        function toggleNotification() {
+            gameSettings.notificationEnabled = document.getElementById('notificationToggle').checked;
+            saveSettings();
+        }
+
+        function vibrate(duration) {
+            if (gameSettings.vibrationEnabled && navigator.vibrate) {
+                navigator.vibrate(duration);
+            }
+        }
+
+        function resetProgress() {
+            if (confirm('Are you sure you want to reset ALL progress? This cannot be undone!')) {
+                localStorage.removeItem('neonBrickData');
+                localStorage.removeItem('neonBrickSettings');
+                showToast('Progress reset! Reloading...', 'warning');
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            }
         }
 
         // === AUDIO ENGINE ===
@@ -1066,6 +1349,7 @@
         }
 
         function playSound(type) {
+            if (!gameSettings.soundEnabled) return;
             if (!audioInitialized || !audioContext) return;
 
             try {
@@ -1258,7 +1542,7 @@
         let doublePointsActive = false;
         let doublePointsTimer = null;
 
-        let ball = { x: 0, y: 0, dx: 4, dy: -4, radius: 8, baseSpeed: 4 };
+        let ball = { x: 0, y: 0, dx: 3, dy: -3, radius: 8, baseSpeed: 3, color: null, glowColor: null };
         let paddle = { x: 0, width: 90, height: 14 };
         let bricks = [];
         let particles = [];
@@ -1295,14 +1579,16 @@
             const paddleBonus = playerData.paddleLevel * 15;
             paddle.width = 90 + paddleBonus;
 
-            const speedReduction = playerData.speedLevel * 0.4;
-            ball.baseSpeed = Math.max(3, 4 - speedReduction);
+            const speedReduction = playerData.speedLevel * 0.3;
+            ball.baseSpeed = Math.max(2.5, 3 - speedReduction);
 
-            // Reset ball position
+            // Reset ball position and color
             ball.x = canvas.width / 2;
             ball.y = canvas.height - 60;
             ball.dx = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
             ball.dy = -ball.baseSpeed;
+            ball.color = null;  // Reset to skin default
+            ball.glowColor = null;
 
             // Center paddle
             paddle.x = (canvas.width - paddle.width) / 2;
@@ -1668,6 +1954,10 @@
                             ball.dy = -ball.dy;
                             b.hits--;
 
+                            // Change ball color to match brick color
+                            ball.color = b.color.bg;
+                            ball.glowColor = b.color.glow;
+
                             if (b.hits <= 0) {
                                 b.status = 0;
 
@@ -1736,12 +2026,20 @@
                 ctx.stroke();
             }
 
-            // Draw ball with trail
+            // Draw ball with trail (color changes on brick collision)
+            const ballColor = ball.color || skin.ball;
+            const ballGlow = ball.glowColor || skin.trail;
             ctx.shadowBlur = 20;
-            ctx.shadowColor = skin.trail;
-            ctx.fillStyle = skin.ball;
+            ctx.shadowColor = ballGlow;
+            ctx.fillStyle = ballColor;
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            // Add inner glow for more vibrant effect
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = ballColor;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius * 0.6, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
 
@@ -1789,6 +2087,7 @@
                         lives--;
                         combo = 0;
                         playSound('lose');
+                        vibrate(100);
                         updateStatsBar();
 
                         if (lives <= 0) {
@@ -1796,11 +2095,13 @@
                             return;
                         }
 
-                        // Reset ball
+                        // Reset ball position and color
                         ball.x = canvas.width / 2;
                         ball.y = canvas.height - 60;
                         ball.dx = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
                         ball.dy = -ball.baseSpeed;
+                        ball.color = null;
+                        ball.glowColor = null;
                     }
                 }
             }
@@ -1952,6 +2253,23 @@
 
             document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
 
+            // Handle overlay visibility FIRST before any other operations
+            if (tabName !== 'game') {
+                gamePaused = true;
+                // Hide game overlay when switching to other tabs
+                overlay.classList.add('hidden');
+                overlayStats.classList.add('hidden');
+            } else {
+                gamePaused = false;
+                // Show overlay again if game is not running (game over/start screen)
+                if (!gameRunning) {
+                    overlay.classList.remove('hidden');
+                } else {
+                    draw();
+                }
+            }
+
+            // Then update the specific tab content
             if (tabName === 'shop') {
                 document.getElementById('shopScreen').classList.add('active');
                 updateShopUI();
@@ -1961,14 +2279,6 @@
             } else if (tabName === 'leaderboard') {
                 document.getElementById('leaderboardScreen').classList.add('active');
                 updateLeaderboard();
-            }
-
-            // Pause game when leaving
-            if (tabName !== 'game') {
-                gamePaused = true;
-            } else {
-                gamePaused = false;
-                if (gameRunning) draw();
             }
         }
 
@@ -2167,70 +2477,126 @@
             document.getElementById('earnBadge').classList.add('hidden');
         }
 
+        // Track which tasks user has started (clicked Go)
+        let tasksStarted = {};
+
         function updateTasks() {
             const tasks = ['channel', 'twitter'];
             tasks.forEach(task => {
-                const btn = document.getElementById('btn' + task.charAt(0).toUpperCase() + task.slice(1).replace('channel', 'JoinChannel'));
+                const btn = document.getElementById('btn' + task.charAt(0).toUpperCase() + task.slice(1));
+                if (!btn) return;
+
                 if (playerData.tasksCompleted.includes(task)) {
-                    if (btn) {
-                        btn.textContent = 'Done ✓';
-                        btn.disabled = true;
-                        btn.classList.add('claimed');
-                    }
+                    // Task completed
+                    btn.textContent = 'Done ✓';
+                    btn.disabled = true;
+                    btn.classList.add('claimed');
+                    btn.onclick = null;
+                } else if (tasksStarted[task]) {
+                    // User clicked Go, now show Verify
+                    btn.textContent = 'Verify';
+                    btn.disabled = false;
+                    btn.classList.remove('claimed');
+                } else {
+                    // Initial state
+                    btn.textContent = 'Go';
+                    btn.disabled = false;
+                    btn.classList.remove('claimed');
                 }
             });
         }
 
-        function doTask(task, reward) {
+        function getTaskUrl(task) {
+            switch(task) {
+                case 'channel':
+                    return { url: 'https://t.me/neonbrickgame', isTelegram: true };
+                case 'twitter':
+                    return { url: 'https://x.com/CachepStudio', isTelegram: false };
+                default:
+                    return null;
+            }
+        }
+
+        function getTaskReward(task) {
+            switch(task) {
+                case 'channel': return 500;
+                case 'twitter': return 300;
+                default: return 0;
+            }
+        }
+
+        function openLinkInNewTab(url, isTelegramLink) {
+            // Check if REALLY running inside Telegram
+            const isRealTelegram = tg && tg.initData && tg.initData.length > 0;
+
+            if (isRealTelegram) {
+                if (isTelegramLink && tg.openTelegramLink) {
+                    tg.openTelegramLink(url);
+                } else if (tg.openLink) {
+                    tg.openLink(url, { try_instant_view: false });
+                } else {
+                    window.open(url, '_blank');
+                }
+            } else {
+                // Regular browser - open in new tab
+                window.open(url, '_blank');
+            }
+        }
+
+        function startTask(task, reward) {
             if (playerData.tasksCompleted.includes(task)) {
                 showToast('Đã hoàn thành task này!', 'warning');
                 return;
             }
 
-            // Simulate task completion
-            let taskUrl = '';
-            switch(task) {
-                case 'channel':
-                    taskUrl = 'https://t.me/neonbrickgame';
-                    break;
-                case 'twitter':
-                    taskUrl = 'https://x.com/CachepStudio';
-                    break;
-            }
+            const btn = document.getElementById('btn' + task.charAt(0).toUpperCase() + task.slice(1));
+            if (!btn) return;
 
-            // Open link
-            if (tg && tg.openTelegramLink && task === 'channel') {
-                tg.openTelegramLink(taskUrl);
+            // Check current state
+            if (!tasksStarted[task]) {
+                // First click: Go -> open link and change to Verify
+                const taskInfo = getTaskUrl(task);
+                if (taskInfo) {
+                    openLinkInNewTab(taskInfo.url, taskInfo.isTelegram);
+                }
+
+                tasksStarted[task] = true;
+                btn.textContent = 'Verify';
+                showToast('Hoàn thành task rồi bấm Verify!', 'warning');
             } else {
-                window.open(taskUrl, '_blank');
+                // Second click: Verify -> complete task
+                verifyTask(task);
             }
+        }
 
-            // Give reward after delay (simulating verification)
-            setTimeout(() => {
-                playerData.coins += reward;
-                playerData.tasksCompleted.push(task);
-                saveData();
-                updateTasks();
-                showToast(`+${reward} Coins!`, 'success');
-                playSound('coin');
-            }, 2000);
+        function verifyTask(task) {
+            const reward = getTaskReward(task);
+
+            // Complete the task
+            playerData.coins += reward;
+            playerData.tasksCompleted.push(task);
+            saveData();
+            updateTasks();
+            updateHeaderUI();
+            showToast(`+${reward} Coins!`, 'success');
+            playSound('coin');
         }
 
         function inviteFriends() {
-            const shareText = `🎮 Chơi Neon Brick Breaker và kiếm Coins!\n\n🚀 Play-to-Earn trên Telegram\n💰 Mời bạn bè nhận 1000 Coins\n\n`;
             const shareUrl = `https://t.me/NeonBrickGameBot/Play`;
 
-            if (tg && tg.openTelegramLink) {
+            // Check if REALLY running inside Telegram
+            const isRealTelegram = tg && tg.initData && tg.initData.length > 0;
+
+            if (isRealTelegram && tg.openTelegramLink) {
+                // Inside Telegram - use native Telegram share
+                const shareText = `🎮 Chơi Neon Brick Breaker và kiếm Coins!\n\n🚀 Play-to-Earn trên Telegram\n💰 Mời bạn bè nhận 1000 Coins\n\n`;
                 const inviteLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
                 tg.openTelegramLink(inviteLink);
             } else {
-                navigator.share?.({
-                    title: 'Neon Brick Breaker',
-                    text: shareText,
-                    url: shareUrl
-                }).catch(() => {
-                    showToast('Copy link và chia sẻ với bạn bè!', 'warning');
-                });
+                // Browser - open game link in new tab for user to copy/share
+                window.open(shareUrl, '_blank');
+                showToast('Copy link và chia sẻ với bạn bè!', 'success');
             }
         }
 
@@ -2410,6 +2776,7 @@
         // === INITIALIZE ===
         function init() {
             loadData();
+            loadSettings();
             updateAllUI();
             createDefaultBricks();
             initTonConnect();
