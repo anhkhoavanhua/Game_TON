@@ -10,6 +10,8 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- TON Connect UI -->
     <script src="https://unpkg.com/@tonconnect/ui@2.0.0/dist/tonconnect-ui.min.js"></script>
+    <!-- Supabase SDK -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <!-- Font Awesome cho icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -1261,6 +1263,256 @@
             tg.enableClosingConfirmation();
         }
 
+        // === SUPABASE CONFIG ===
+        const SUPABASE_URL = 'https://darzwbsnqyxmkkpqffqg.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhcnp3YnNucXl4bWtrcHFmZnFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4NDMzNzksImV4cCI6MjA4MDQxOTM3OX0.Bd26Wdw7u5-qVuHD46ohhfLocoQPFfH5acyA-YuOydg';
+
+        let supabase = null;
+        let currentUser = null;
+        let isOnline = navigator.onLine;
+
+        // Initialize Supabase
+        function initSupabase() {
+            try {
+                if (window.supabase) {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    console.log('Supabase initialized');
+                }
+            } catch (e) {
+                console.warn('Supabase init failed:', e);
+            }
+        }
+
+        // Get or create user in database
+        async function getOrCreateUser(telegramUser) {
+            if (!supabase || !telegramUser) return null;
+
+            try {
+                // Check if user exists
+                const { data: existingUser, error: fetchError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('telegram_id', telegramUser.id)
+                    .single();
+
+                if (existingUser) {
+                    currentUser = existingUser;
+                    return existingUser;
+                }
+
+                // Create new user with referral code
+                const referralCode = 'NB' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+                const { data: newUser, error: insertError } = await supabase
+                    .from('users')
+                    .insert({
+                        telegram_id: telegramUser.id,
+                        username: telegramUser.username || '',
+                        first_name: telegramUser.first_name || 'Player',
+                        referral_code: referralCode,
+                        coins: 0,
+                        level: 1
+                    })
+                    .select()
+                    .single();
+
+                if (newUser) {
+                    currentUser = newUser;
+                    return newUser;
+                }
+            } catch (e) {
+                console.warn('getOrCreateUser error:', e);
+            }
+            return null;
+        }
+
+        // Sync local data to server
+        async function syncToServer() {
+            if (!supabase || !currentUser || !isOnline) return;
+
+            try {
+                const { error } = await supabase
+                    .from('users')
+                    .update({
+                        coins: playerData.coins,
+                        high_score: playerData.highScore,
+                        level: playerData.level,
+                        total_games_played: playerData.totalGamesPlayed,
+                        total_bricks_destroyed: playerData.totalBricksDestroyed,
+                        max_combo: playerData.maxCombo,
+                        max_lives: playerData.maxLives,
+                        paddle_level: playerData.paddleLevel,
+                        speed_level: playerData.speedLevel,
+                        multi_level: playerData.multiLevel,
+                        bombs: playerData.bombs,
+                        shields: playerData.shields,
+                        doubles: playerData.doubles,
+                        current_skin: playerData.currentSkin,
+                        unlocked_skins: playerData.unlockedSkins,
+                        daily_streak: playerData.dailyStreak,
+                        tasks_completed: playerData.tasksCompleted,
+                        wallet_address: playerData.walletAddress || null
+                    })
+                    .eq('telegram_id', currentUser.telegram_id);
+
+                if (error) console.warn('Sync error:', error);
+            } catch (e) {
+                console.warn('syncToServer error:', e);
+            }
+        }
+
+        // Load data from server
+        async function loadFromServer() {
+            if (!supabase || !currentUser) return null;
+
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('telegram_id', currentUser.telegram_id)
+                    .single();
+
+                return data;
+            } catch (e) {
+                console.warn('loadFromServer error:', e);
+                return null;
+            }
+        }
+
+        // Submit score to leaderboard
+        async function submitScore(score, gameData) {
+            if (!supabase || !currentUser) return;
+
+            try {
+                await supabase
+                    .from('scores')
+                    .insert({
+                        user_id: currentUser.id,
+                        telegram_id: currentUser.telegram_id,
+                        username: currentUser.username || currentUser.first_name,
+                        score: score,
+                        bricks_destroyed: gameData.bricksDestroyed || 0,
+                        max_combo: gameData.maxCombo || 0,
+                        level: gameData.level || 1
+                    });
+            } catch (e) {
+                console.warn('submitScore error:', e);
+            }
+        }
+
+        // Get leaderboard from database
+        async function getLeaderboardFromDB(type = 'all') {
+            if (!supabase) return [];
+
+            try {
+                let query = supabase
+                    .from('scores')
+                    .select('username, score, max_combo, created_at')
+                    .order('score', { ascending: false })
+                    .limit(100);
+
+                if (type === 'weekly') {
+                    const weekAgo = new Date();
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    query = query.gte('created_at', weekAgo.toISOString());
+                } else if (type === 'daily') {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    query = query.gte('created_at', today.toISOString());
+                }
+
+                const { data, error } = await query;
+                return data || [];
+            } catch (e) {
+                console.warn('getLeaderboard error:', e);
+                return [];
+            }
+        }
+
+        // Handle referral
+        async function handleReferral(referralCode) {
+            if (!supabase || !currentUser || currentUser.referred_by) return false;
+
+            try {
+                // Find referrer
+                const { data: referrer } = await supabase
+                    .from('users')
+                    .select('id, telegram_id')
+                    .eq('referral_code', referralCode)
+                    .single();
+
+                if (!referrer || referrer.telegram_id === currentUser.telegram_id) return false;
+
+                // Update referred_by
+                await supabase
+                    .from('users')
+                    .update({ referred_by: referralCode })
+                    .eq('telegram_id', currentUser.telegram_id);
+
+                // Create referral record
+                await supabase
+                    .from('referrals')
+                    .insert({
+                        referrer_id: referrer.id,
+                        referred_id: currentUser.id
+                    });
+
+                // Add bonus to both users
+                await supabase.rpc('add_referral_bonus', {
+                    p_referrer_telegram_id: referrer.telegram_id,
+                    p_referred_telegram_id: currentUser.telegram_id,
+                    p_bonus: 1000
+                });
+
+                // Update local data
+                playerData.coins += 1000;
+                saveData();
+
+                return true;
+            } catch (e) {
+                console.warn('handleReferral error:', e);
+                return false;
+            }
+        }
+
+        // Merge server data with local data (keep higher values)
+        function mergeData(serverData) {
+            if (!serverData) return;
+
+            playerData.coins = Math.max(playerData.coins, serverData.coins || 0);
+            playerData.highScore = Math.max(playerData.highScore, serverData.high_score || 0);
+            playerData.level = Math.max(playerData.level, serverData.level || 1);
+            playerData.totalGamesPlayed = Math.max(playerData.totalGamesPlayed, serverData.total_games_played || 0);
+            playerData.totalBricksDestroyed = Math.max(playerData.totalBricksDestroyed, serverData.total_bricks_destroyed || 0);
+            playerData.maxCombo = Math.max(playerData.maxCombo, serverData.max_combo || 0);
+            playerData.maxLives = Math.max(playerData.maxLives, serverData.max_lives || 3);
+            playerData.paddleLevel = Math.max(playerData.paddleLevel, serverData.paddle_level || 0);
+            playerData.speedLevel = Math.max(playerData.speedLevel, serverData.speed_level || 0);
+            playerData.multiLevel = Math.max(playerData.multiLevel, serverData.multi_level || 0);
+            playerData.bombs = Math.max(playerData.bombs, serverData.bombs || 0);
+            playerData.shields = Math.max(playerData.shields, serverData.shields || 0);
+            playerData.doubles = Math.max(playerData.doubles, serverData.doubles || 0);
+
+            // Merge unlocked skins
+            if (serverData.unlocked_skins) {
+                const allSkins = [...new Set([...playerData.unlockedSkins, ...serverData.unlocked_skins])];
+                playerData.unlockedSkins = allSkins;
+            }
+
+            saveData();
+        }
+
+        // Auto sync every 30 seconds when playing
+        setInterval(() => {
+            if (isOnline && currentUser) {
+                syncToServer();
+            }
+        }, 30000);
+
+        // Listen for online/offline
+        window.addEventListener('online', () => { isOnline = true; syncToServer(); });
+        window.addEventListener('offline', () => { isOnline = false; });
+
         // === SETTINGS ===
         let gameSettings = {
             soundEnabled: true,
@@ -2229,6 +2481,14 @@
 
             saveData();
 
+            // Submit score to leaderboard & sync to server
+            submitScore(score, {
+                bricksDestroyed: playerData.totalBricksDestroyed,
+                maxCombo: maxComboThisGame,
+                level: playerData.level
+            });
+            syncToServer();
+
             overlayTitle.innerHTML = "GAME OVER";
             overlaySub.innerHTML = `High Score: ${playerData.highScore}`;
 
@@ -2708,55 +2968,69 @@
         }
 
         // === LEADERBOARD ===
-        function updateLeaderboard() {
+        let currentLeaderboardTab = 'all';
+
+        async function updateLeaderboard() {
             const list = document.getElementById('leaderboardList');
 
-            // Mock leaderboard data (in production, fetch from server)
-            const mockData = [
-                { name: 'CryptoKing', score: 125000, avatar: '👑' },
-                { name: 'NeonMaster', score: 98500, avatar: '⚡' },
-                { name: 'BrickDestroyer', score: 87200, avatar: '🔥' },
-                { name: 'TONWhale', score: 76800, avatar: '🐋' },
-                { name: 'GameFiPro', score: 65400, avatar: '🎮' },
-                { name: 'Player123', score: 54300, avatar: '🎯' },
-                { name: 'CoinHunter', score: 43200, avatar: '💰' },
-                { name: 'NightOwl', score: 32100, avatar: '🦉' }
-            ];
+            // Show loading
+            list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Loading...</div>';
 
-            // Add current player to mock data for ranking
-            const playerEntry = {
-                name: document.getElementById('userName').textContent,
-                score: playerData.highScore,
-                avatar: '🎮',
-                isPlayer: true
-            };
+            // Get leaderboard from database
+            let leaderboardData = await getLeaderboardFromDB(currentLeaderboardTab);
 
-            const allPlayers = [...mockData, playerEntry].sort((a, b) => b.score - a.score);
-            const playerRank = allPlayers.findIndex(p => p.isPlayer) + 1;
+            // If no data from server, use fallback mock data
+            if (!leaderboardData || leaderboardData.length === 0) {
+                leaderboardData = [
+                    { username: 'CryptoKing', score: 125000 },
+                    { username: 'NeonMaster', score: 98500 },
+                    { username: 'BrickDestroyer', score: 87200 },
+                    { username: 'TONWhale', score: 76800 },
+                    { username: 'GameFiPro', score: 65400 }
+                ];
+            }
+
+            // Calculate player rank
+            const playerName = document.getElementById('userName').textContent;
+            const playerScore = playerData.highScore;
+            let playerRank = leaderboardData.findIndex(p => p.score < playerScore) + 1;
+            if (playerRank === 0) playerRank = leaderboardData.length + 1;
 
             document.getElementById('yourRank').textContent = playerRank;
             document.getElementById('yourHighScore').textContent = playerData.highScore.toLocaleString();
 
-            list.innerHTML = mockData.slice(0, 8).map((player, index) => {
+            // Avatar emojis based on rank
+            const avatars = ['👑', '⚡', '🔥', '🐋', '🎮', '🎯', '💰', '🦉', '⭐', '🎪'];
+
+            list.innerHTML = leaderboardData.slice(0, 10).map((player, index) => {
                 const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : '';
+                const avatar = avatars[index] || '🎮';
+                const isCurrentPlayer = player.username === playerName;
+
                 return `
-                    <div class="leaderboard-item">
+                    <div class="leaderboard-item" style="${isCurrentPlayer ? 'background: rgba(0,255,196,0.1); border: 1px solid var(--primary);' : ''}">
                         <div class="leaderboard-rank ${rankClass}">${index + 1}</div>
-                        <div style="font-size: 1.5rem;">${player.avatar}</div>
+                        <div style="font-size: 1.5rem;">${avatar}</div>
                         <div class="leaderboard-info">
-                            <div class="leaderboard-name">${player.name}</div>
+                            <div class="leaderboard-name">${player.username || 'Anonymous'}${isCurrentPlayer ? ' (You)' : ''}</div>
                         </div>
-                        <div class="leaderboard-score">${player.score.toLocaleString()}</div>
+                        <div class="leaderboard-score">${(player.score || 0).toLocaleString()}</div>
                     </div>
                 `;
             }).join('');
+
+            // If no entries at all
+            if (leaderboardData.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">No scores yet. Be the first!</div>';
+            }
         }
 
         function switchLeaderboardTab(tab) {
             document.querySelectorAll('#leaderboardScreen .section-tab').forEach(el => el.classList.remove('active'));
             event.target.classList.add('active');
 
-            // In production, fetch different data based on tab
+            // Update tab and fetch data
+            currentLeaderboardTab = tab;
             updateLeaderboard();
         }
 
@@ -2774,12 +3048,29 @@
         }
 
         // === INITIALIZE ===
-        function init() {
+        async function init() {
             loadData();
             loadSettings();
             updateAllUI();
             createDefaultBricks();
             initTonConnect();
+
+            // Initialize Supabase
+            initSupabase();
+
+            // If running in Telegram, sync with server
+            if (tg && tg.initDataUnsafe?.user) {
+                const telegramUser = tg.initDataUnsafe.user;
+                const serverUser = await getOrCreateUser(telegramUser);
+
+                if (serverUser) {
+                    // Merge server data with local (keep higher values)
+                    const serverData = await loadFromServer();
+                    mergeData(serverData);
+                    updateAllUI();
+                    console.log('User synced:', serverUser.username || serverUser.first_name);
+                }
+            }
 
             // Check for unclaimed daily reward
             const today = new Date().toDateString();
