@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Fix All Errors - Neon Brick Breaker</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e14 0%, #1a2130 100%);
+            color: #00ffc4;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #ff00e6;
+            text-shadow: 0 0 20px #ff00e6;
+            border-bottom: 2px solid #ff00e6;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #00d4ff;
+            margin-top: 30px;
+        }
+        .step {
+            background: #141922;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border-left: 4px solid #00ffc4;
+        }
+        .step-number {
+            background: linear-gradient(135deg, #00ffc4, #00d4ff);
+            color: #0a0e14;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .code-block {
+            background: #0a0e14;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            border: 1px solid #00ffc4;
+            margin: 10px 0;
+        }
+        .warning {
+            background: rgba(255, 71, 87, 0.1);
+            border-left-color: #ff4757;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #ff4757;
+        }
+        .success {
+            background: rgba(46, 213, 115, 0.1);
+            border-left-color: #2ed573;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #2ed573;
+        }
+        .button {
+            background: linear-gradient(135deg, #00ffc4, #00d4ff);
+            color: #0a0e14;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+        }
+        .button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0, 255, 196, 0.4);
+        }
+        ul {
+            margin-left: 20px;
+        }
+        li {
+            margin: 8px 0;
+        }
+        a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 HƯỚNG DẪN FIX TẤT CẢ LỖI</h1>
+
+    <div class="success">
+        <strong>✅ TÓM TẮT:</strong><br>
+        - SQL Script đã được tạo: <code>supabase_setup.sql</code><br>
+        - Server đang chạy tại: <code>http://localhost:8000</code><br>
+        - Chỉ cần làm theo 3 bước dưới đây là xong!
+    </div>
+
+    <h2>📋 LỖI PHỔ BIẾN & CÁCH FIX</h2>
+
+    <!-- ERROR 1 -->
+    <div class="step">
+        <h3><span class="step-number">1</span> Lỗi: "relation public.users does not exist"</h3>
+
+        <p><strong>Nguyên nhân:</strong> Database chưa có tables</p>
+
+        <p><strong>Giải pháp:</strong></p>
+        <ol>
+            <li>Mở Supabase Dashboard:
+                <a href="https://supabase.com/dashboard" target="_blank">
+                    https://supabase.com/dashboard
+                </a>
+            </li>
+            <li>Chọn project: <code>darzwbsnqyxmkkpqffqg</code></li>
+            <li>Click <strong>SQL Editor</strong> (menu bên trái)</li>
+            <li>Click <strong>New Query</strong></li>
+            <li>Mở file <code>supabase_setup.sql</code> và copy toàn bộ nội dung</li>
+            <li>Paste vào SQL Editor</li>
+            <li>Click <strong>Run</strong> (hoặc Ctrl+Enter)</li>
+        </ol>
+
+        <div class="success">
+            ✅ Kết quả: Sẽ thấy "Success. No rows returned" - đây là OK!
+        </div>
+    </div>
+
+    <!-- ERROR 2 -->
+    <div class="step">
+        <h3><span class="step-number">2</span> Lỗi: "new row violates row-level security policy"</h3>
+
+        <p><strong>Nguyên nhân:</strong> RLS (Row Level Security) quá strict</p>
+
+        <p><strong>Giải pháp:</strong> Đã fix trong SQL script ở bước 1</p>
+
+        <div class="code-block">
+-- RLS policies đã được config trong script:
+CREATE POLICY "Users can insert their own data"
+    ON users FOR INSERT
+    WITH CHECK (true);
+        </div>
+
+        <p>Nếu vẫn lỗi, tắt RLS tạm thời (chỉ để test):</p>
+        <div class="code-block">
+ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE scores DISABLE ROW LEVEL SECURITY;
+ALTER TABLE referrals DISABLE ROW LEVEL SECURITY;
+        </div>
+    </div>
+
+    <!-- ERROR 3 -->
+    <div class="step">
+        <h3><span class="step-number">3</span> Lỗi: "CORS policy blocked"</h3>
+
+        <p><strong>Nguyên nhân:</strong> Browser block request tới Supabase</p>
+
+        <p><strong>Giải pháp:</strong></p>
+        <ol>
+            <li>Trong Supabase Dashboard → <strong>Settings</strong> → <strong>API</strong></li>
+            <li>Scroll xuống <strong>CORS Configuration</strong></li>
+            <li>Thêm origin: <code>http://localhost:8000</code></li>
+            <li>Thêm origin: <code>https://anhkhoavanhua.github.io</code></li>
+            <li>Click <strong>Save</strong></li>
+        </ol>
+
+        <div class="warning">
+            ⚠️ Lưu ý: Supabase thường cho phép tất cả origins mặc định, nên lỗi này ít gặp
+        </div>
+    </div>
+
+    <!-- ERROR 4 -->
+    <div class="step">
+        <h3><span class="step-number">4</span> Lỗi: "Invalid API key"</h3>
+
+        <p><strong>Nguyên nhân:</strong> API key sai hoặc đã expire</p>
+
+        <p><strong>Giải pháp:</strong></p>
+        <ol>
+            <li>Vào Supabase Dashboard → <strong>Settings</strong> → <strong>API</strong></li>
+            <li>Copy <strong>Project URL</strong> và <strong>anon public key</strong></li>
+            <li>Mở file <code>NeonBrick.html</code></li>
+            <li>Tìm dòng:</li>
+        </ol>
+
+        <div class="code-block">
+const SUPABASE_URL = 'https://darzwbsnqyxmkkpqffqg.supabase.co';
+const SUPABASE_KEY = 'eyJhbGci...';
+        </div>
+
+        <p>Thay thế bằng URL và key mới</p>
+    </div>
+
+    <!-- ERROR 5 -->
+    <div class="step">
+        <h3><span class="step-number">5</span> Lỗi: "Failed to fetch" / Network error</h3>
+
+        <p><strong>Nguyên nhân:</strong> Không có internet hoặc Supabase server down</p>
+
+        <p><strong>Giải pháp:</strong></p>
+        <ol>
+            <li>Kiểm tra internet: <code>ping 8.8.8.8</code></li>
+            <li>Kiểm tra Supabase status:
+                <a href="https://status.supabase.com" target="_blank">
+                    https://status.supabase.com
+                </a>
+            </li>
+            <li>Thử ping Supabase project:
+                <div class="code-block">curl https://darzwbsnqyxmkkpqffqg.supabase.co</div>
+            </li>
+        </ol>
+    </div>
+
+    <h2>🎯 SAU KHI FIX XONG</h2>
+
+    <div class="step">
+        <h3>Test lại để verify:</h3>
+        <ol>
+            <li>Mở: <a href="http://localhost:8000/test_supabase.html" target="_blank">Test Supabase</a></li>
+            <li>Kiểm tra tất cả đều ✅ màu xanh</li>
+            <li>Click <strong>Run All Tests</strong></li>
+            <li>Nếu OK → Mở game: <a href="http://localhost:8000/NeonBrick.html" target="_blank">Play Game</a></li>
+        </ol>
+
+        <a href="http://localhost:8000/test_supabase.html" class="button">🧪 Test Supabase</a>
+        <a href="http://localhost:8000/NeonBrick.html" class="button">🎮 Play Game</a>
+    </div>
+
+    <h2>📚 RESOURCES</h2>
+
+    <div class="step">
+        <ul>
+            <li><strong>Supabase Dashboard:</strong> <a href="https://supabase.com/dashboard" target="_blank">supabase.com/dashboard</a></li>
+            <li><strong>SQL Editor:</strong> Dashboard → SQL Editor</li>
+            <li><strong>API Settings:</strong> Dashboard → Settings → API</li>
+            <li><strong>Database Tables:</strong> Dashboard → Table Editor</li>
+            <li><strong>Supabase Docs:</strong> <a href="https://supabase.com/docs" target="_blank">supabase.com/docs</a></li>
+        </ul>
+    </div>
+
+    <h2>🆘 VẪN GẶP LỖI?</h2>
+
+    <div class="warning">
+        <strong>Gửi cho tôi:</strong><br>
+        1. Screenshot của error trong Console (F12 → Console)<br>
+        2. Kết quả từ trang test_supabase.html<br>
+        3. Output của SQL script khi chạy<br>
+        <br>
+        Tôi sẽ debug cụ thể!
+    </div>
+
+    <div class="success" style="margin-top: 30px; text-align: center;">
+        <h3>🎊 Good Luck!</h3>
+        <p>Sau khi fix xong, game sẽ hoạt động 100% với backend!</p>
+    </div>
+
+    <script>
+        // Auto-refresh test results every 5s if on test page
+        if (window.location.hash === '#auto-test') {
+            console.log('Auto-test mode enabled');
+            setTimeout(() => {
+                window.location.href = 'test_supabase.html';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

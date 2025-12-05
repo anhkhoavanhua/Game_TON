@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Supabase Connection</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0e14;
+            color: #00ffc4;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #ff00e6;
+            text-shadow: 0 0 10px #ff00e6;
+        }
+        .test-item {
+            background: #141922;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 3px solid #00ffc4;
+        }
+        .success {
+            border-left-color: #2ed573;
+        }
+        .error {
+            border-left-color: #ff4757;
+        }
+        .status {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        button {
+            background: linear-gradient(135deg, #00ffc4, #00d4ff);
+            color: #0a0e14;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        pre {
+            background: #0a0e14;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Supabase Backend Connection</h1>
+
+    <div class="test-item">
+        <div class="status">📡 Server Status</div>
+        <div id="server-status">Checking...</div>
+    </div>
+
+    <div class="test-item">
+        <div class="status">🔑 API Configuration</div>
+        <div id="config-status">Checking...</div>
+    </div>
+
+    <div class="test-item">
+        <div class="status">🗄️ Database Connection</div>
+        <div id="db-status">Checking...</div>
+    </div>
+
+    <div class="test-item">
+        <div class="status">📊 Tables Status</div>
+        <div id="tables-status">Checking...</div>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <button onclick="testCreateUser()">Test Create User</button>
+        <button onclick="testSubmitScore()">Test Submit Score</button>
+        <button onclick="testGetLeaderboard()">Test Get Leaderboard</button>
+        <button onclick="runAllTests()">Run All Tests</button>
+    </div>
+
+    <div id="results" style="margin-top: 20px;"></div>
+
+    <script>
+        // Supabase Config (từ game)
+        const SUPABASE_URL = 'https://darzwbsnqyxmkkpqffqg.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhcnp3YnNucXl4bWtrcHFmZnFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4NDMzNzksImV4cCI6MjA4MDQxOTM3OX0.Bd26Wdw7u5-qVuHD46ohhfLocoQPFfH5acyA-YuOydg';
+
+        let supabase;
+
+        // Initialize Supabase
+        function initSupabase() {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                updateStatus('server-status', '✅ Supabase Client Initialized', true);
+                updateStatus('config-status', `✅ URL: ${SUPABASE_URL}<br>✅ API Key: ${SUPABASE_KEY.substring(0, 20)}...`, true);
+                return true;
+            } catch (error) {
+                updateStatus('server-status', `❌ Error: ${error.message}`, false);
+                return false;
+            }
+        }
+
+        // Test Database Connection
+        async function testDatabaseConnection() {
+            try {
+                // Try to query users table
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('count')
+                    .limit(1);
+
+                if (error) {
+                    updateStatus('db-status', `❌ Connection Failed: ${error.message}`, false);
+                    return false;
+                }
+
+                updateStatus('db-status', '✅ Database Connected Successfully', true);
+                return true;
+            } catch (error) {
+                updateStatus('db-status', `❌ Error: ${error.message}`, false);
+                return false;
+            }
+        }
+
+        // Test Tables
+        async function testTables() {
+            const tables = ['users', 'scores', 'referrals'];
+            let results = [];
+
+            for (const table of tables) {
+                try {
+                    const { data, error } = await supabase
+                        .from(table)
+                        .select('*')
+                        .limit(1);
+
+                    if (error) {
+                        results.push(`❌ Table "${table}": ${error.message}`);
+                    } else {
+                        results.push(`✅ Table "${table}": OK`);
+                    }
+                } catch (error) {
+                    results.push(`❌ Table "${table}": ${error.message}`);
+                }
+            }
+
+            updateStatus('tables-status', results.join('<br>'), results.every(r => r.includes('✅')));
+        }
+
+        // Test Create User
+        async function testCreateUser() {
+            const testUser = {
+                telegram_id: Math.floor(Math.random() * 1000000000),
+                username: 'test_user_' + Date.now(),
+                first_name: 'Test User',
+                coins: 1000,
+                referral_code: 'TEST' + Math.random().toString(36).substring(2, 6).toUpperCase()
+            };
+
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .insert(testUser)
+                    .select()
+                    .single();
+
+                if (error) {
+                    addResult('Create User', false, error.message);
+                } else {
+                    addResult('Create User', true, `User created: ${data.username} (ID: ${data.telegram_id})`);
+                }
+            } catch (error) {
+                addResult('Create User', false, error.message);
+            }
+        }
+
+        // Test Submit Score
+        async function testSubmitScore() {
+            const testScore = {
+                telegram_id: 123456789,
+                username: 'test_player',
+                score: Math.floor(Math.random() * 10000),
+                bricks_destroyed: Math.floor(Math.random() * 100),
+                max_combo: Math.floor(Math.random() * 50),
+                level: Math.floor(Math.random() * 10) + 1
+            };
+
+            try {
+                const { data, error } = await supabase
+                    .from('scores')
+                    .insert(testScore)
+                    .select()
+                    .single();
+
+                if (error) {
+                    addResult('Submit Score', false, error.message);
+                } else {
+                    addResult('Submit Score', true, `Score submitted: ${data.score} points`);
+                }
+            } catch (error) {
+                addResult('Submit Score', false, error.message);
+            }
+        }
+
+        // Test Get Leaderboard
+        async function testGetLeaderboard() {
+            try {
+                const { data, error } = await supabase
+                    .from('scores')
+                    .select('username, score, max_combo')
+                    .order('score', { ascending: false })
+                    .limit(10);
+
+                if (error) {
+                    addResult('Get Leaderboard', false, error.message);
+                } else {
+                    const leaderboard = data.map((item, index) =>
+                        `${index + 1}. ${item.username}: ${item.score} points`
+                    ).join('<br>');
+                    addResult('Get Leaderboard', true, `Found ${data.length} scores:<br>${leaderboard}`);
+                }
+            } catch (error) {
+                addResult('Get Leaderboard', false, error.message);
+            }
+        }
+
+        // Run All Tests
+        async function runAllTests() {
+            document.getElementById('results').innerHTML = '<h2>🧪 Running All Tests...</h2>';
+
+            await testCreateUser();
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            await testSubmitScore();
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            await testGetLeaderboard();
+        }
+
+        // Helper: Update Status
+        function updateStatus(elementId, message, success) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            const parent = element.parentElement;
+            parent.classList.remove('success', 'error');
+            parent.classList.add(success ? 'success' : 'error');
+        }
+
+        // Helper: Add Result
+        function addResult(testName, success, message) {
+            const resultsDiv = document.getElementById('results');
+            const resultItem = document.createElement('div');
+            resultItem.className = `test-item ${success ? 'success' : 'error'}`;
+            resultItem.innerHTML = `
+                <div class="status">${success ? '✅' : '❌'} ${testName}</div>
+                <pre>${message}</pre>
+            `;
+            resultsDiv.appendChild(resultItem);
+        }
+
+        // Initialize on load
+        window.addEventListener('load', async () => {
+            if (initSupabase()) {
+                await testDatabaseConnection();
+                await testTables();
+            }
+        });
+    </script>
+</body>
+</html>
